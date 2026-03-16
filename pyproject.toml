@@ -1,0 +1,17 @@
+[project]
+name = "agri-platform"
+version = "0.1.0"
+description = "Version 0 prototype for an agricultural supply coordination platform."
+requires-python = ">=3.11"
+dependencies = [
+    "Flask>=3.0,<4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

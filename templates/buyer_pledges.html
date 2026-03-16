@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Buyer Pledges | Agri Platform{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Buyer Pledges</h1>
+    {% if pledges %}
+    <table>
+        <thead>
+            <tr>
+                <th>Buyer</th>
+                <th>Crop</th>
+                <th>Quantity (kg)</th>
+                <th>Target Price</th>
+                <th>Needed By</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pledge in pledges %}
+            <tr>
+                <td>{{ pledge.organisation_name }}</td>
+                <td>{{ pledge.crop_type }}</td>
+                <td>{{ pledge.quantity_kg }}</td>
+                <td>{{ pledge.target_price_per_kg }}</td>
+                <td>{{ pledge.needed_by_date }}</td>
+                <td>{{ pledge.pledge_status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No buyer pledges are available.</p>
+    {% endif %}
+</section>
+{% endblock %}

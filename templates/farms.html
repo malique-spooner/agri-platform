@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Farm Directory | Agri Platform{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Farm Directory</h1>
+    {% if farms %}
+    <ul>
+        {% for farm in farms %}
+        <li>
+            <strong>{{ farm.farm_name }}</strong> - {{ farm.farmer_name }}
+            {% if farm.county or farm.region %}
+            ({{ farm.county }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region }})
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No farms are available.</p>
+    {% endif %}
+</section>
+{% endblock %}
