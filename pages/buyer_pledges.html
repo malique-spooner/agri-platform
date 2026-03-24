@@ -6,141 +6,160 @@
 <section class="page-header">
     <h1>Buyer Pledges</h1>
     <p class="lede">
-        Review demand, spot what needs attention, and drill into the next coordination step only when you need more detail.
+        Prioritise demand, inspect one pledge at a time, and move into the next coordination step only when needed.
     </p>
 </section>
 
-<section class="management-section">
-    <div class="section-heading">
-        <h2>Open Demand</h2>
-        <p>Requests with no committed supply yet.</p>
-    </div>
-    {% if open_pledges %}
-    <div class="management-grid">
-        {% for pledge in open_pledges %}
-        <article class="management-card management-card--compact">
-            <div class="management-card__header">
-                <div>
-                    <h3>{{ pledge.organisation_name }}</h3>
-                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
-                </div>
-                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
-            </div>
-            <dl class="management-meta management-meta--compact">
-                <div>
-                    <dt>Quantity</dt>
-                    <dd>{{ pledge.quantity_kg }} kg</dd>
-                </div>
-                <div>
-                    <dt>Deadline</dt>
-                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
-                </div>
-                <div>
-                    <dt>Price</dt>
-                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
-                </div>
-            </dl>
-            <p class="management-notes">{{ pledge.criteria_summary }}</p>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty-state">No open buyer pledges are available right now.</p>
-    {% endif %}
+<section class="filter-panel">
+    <form class="filter-form" method="get" action="{{ url_for('buyer_pledges') }}">
+        <input type="text" name="q" value="{{ search_term }}" placeholder="Search buyer or crop...">
+        <select name="crop">
+            <option value="">Crop (All)</option>
+            {% for crop in crop_options %}
+            <option value="{{ crop }}" {% if crop_filter == crop %}selected{% endif %}>{{ crop }}</option>
+            {% endfor %}
+        </select>
+        <select name="status">
+            <option value="">Status (All)</option>
+            <option value="not_started" {% if status_filter == "not_started" %}selected{% endif %}>Not started</option>
+            <option value="in_progress" {% if status_filter == "in_progress" %}selected{% endif %}>In progress</option>
+            <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
+        </select>
+        <select name="sort">
+            <option value="priority" {% if sort_by == "priority" %}selected{% endif %}>Sort: Priority</option>
+            <option value="deadline" {% if sort_by == "deadline" %}selected{% endif %}>Sort: Deadline</option>
+            <option value="remaining" {% if sort_by == "remaining" %}selected{% endif %}>Sort: Remaining qty</option>
+            <option value="buyer" {% if sort_by == "buyer" %}selected{% endif %}>Sort: Buyer</option>
+        </select>
+        <button type="submit">Apply</button>
+    </form>
 </section>
 
-<section class="management-section">
-    <div class="section-heading">
-        <h2>Partially Fulfilled</h2>
-        <p>Requests that have some committed supply but still require attention.</p>
+<section class="queue-layout">
+    <div class="table-wrap queue-table-wrap">
+        {% if pledges %}
+        <table class="directory-table queue-table">
+            <thead>
+                <tr>
+                    <th>Buyer</th>
+                    <th>Crop</th>
+                    <th>Required</th>
+                    <th>Remaining</th>
+                    <th>Deadline</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pledge in pledges %}
+                <tr
+                    class="queue-row {% if selected_pledge and pledge.buyer_pledge_id == selected_pledge.buyer_pledge_id %}queue-row--selected{% endif %}"
+                    data-select-url="{{ url_for('buyer_pledges', q=search_term, crop=crop_filter, status=status_filter, sort=sort_by, selected=pledge.buyer_pledge_id) }}"
+                    tabindex="0"
+                    role="link"
+                >
+                    <td>
+                        <span class="row-link">{{ pledge.organisation_name }}</span>
+                    </td>
+                    <td>{{ pledge.crop_type }}</td>
+                    <td>{{ pledge.quantity_kg }} kg</td>
+                    <td>{{ pledge.remaining_quantity_kg }} kg</td>
+                    <td>{{ pledge.needed_by_date or "No deadline set" }}</td>
+                    <td>
+                        <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.display_status }}</span>
+                    </td>
+                    <td>
+                        <div class="queue-progress">
+                            <div class="progress-track" aria-label="Fulfilment progress">
+                                <span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%;"></span>
+                            </div>
+                            <span class="queue-progress__label">{{ pledge.fulfillment_percent }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No buyer pledges match the current filters.</p>
+        {% endif %}
     </div>
-    {% if partial_pledges %}
-    <div class="management-grid">
-        {% for pledge in partial_pledges %}
-        <article class="management-card management-card--compact">
-            <div class="management-card__header">
-                <div>
-                    <h3>{{ pledge.organisation_name }}</h3>
-                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
-                </div>
-                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
-            </div>
-            <div class="progress-block">
-                <div class="progress-block__labels">
-                    <span>{{ pledge.fulfillment_percent }}% fulfilled</span>
-                    <span>{{ pledge.remaining_quantity_kg }} kg left</span>
-                </div>
-                <div class="progress-track" aria-label="Fulfilment progress">
-                    <span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%;"></span>
-                </div>
-            </div>
-            <dl class="management-meta management-meta--compact">
-                <div>
-                    <dt>Quantity</dt>
-                    <dd>{{ pledge.quantity_kg }} kg</dd>
-                </div>
-                <div>
-                    <dt>Allocated</dt>
-                    <dd>{{ pledge.allocated_quantity_kg }} kg</dd>
-                </div>
-                <div>
-                    <dt>Deadline</dt>
-                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
-                </div>
-                <div>
-                    <dt>Price</dt>
-                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
-                </div>
-            </dl>
-            <p class="management-notes">{{ pledge.criteria_summary }}</p>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty-state">No partially fulfilled buyer pledges are available right now.</p>
-    {% endif %}
-</section>
 
-<section class="management-section">
-    <div class="section-heading">
-        <h2>Fulfilled</h2>
-        <p>Requests that have already reached their required quantity.</p>
-    </div>
-    {% if fulfilled_pledges %}
-    <div class="management-grid">
-        {% for pledge in fulfilled_pledges %}
-        <article class="management-card management-card--compact">
-            <div class="management-card__header">
-                <div>
-                    <h3>{{ pledge.organisation_name }}</h3>
-                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
-                </div>
-                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
+    <aside class="info-card queue-panel">
+        <h2>Selected Pledge</h2>
+        {% if selected_pledge %}
+        <div class="management-card__header queue-panel__header">
+            <div>
+                <h3>{{ selected_pledge.organisation_name }}</h3>
+                <p class="management-card__crop">{{ selected_pledge.crop_type }}</p>
             </div>
-            <dl class="management-meta management-meta--compact">
-                <div>
-                    <dt>Quantity</dt>
-                    <dd>{{ pledge.quantity_kg }} kg</dd>
-                </div>
-                <div>
-                    <dt>Allocated</dt>
-                    <dd>{{ pledge.allocated_quantity_kg }} kg</dd>
-                </div>
-                <div>
-                    <dt>Deadline</dt>
-                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
-                </div>
-                <div>
-                    <dt>Price</dt>
-                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
-                </div>
-            </dl>
-            <p class="management-notes">{{ pledge.criteria_summary }}</p>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty-state">No fulfilled buyer pledges are available right now.</p>
-    {% endif %}
+            <span class="status-pill status-pill--{{ selected_pledge.pledge_status }}">{{ selected_pledge.display_status }}</span>
+        </div>
+        <div class="progress-block">
+            <div class="progress-block__labels">
+                <span>{{ selected_pledge.fulfillment_percent }}% fulfilled</span>
+                <span>{{ selected_pledge.remaining_quantity_kg }} kg left</span>
+            </div>
+            <div class="progress-track" aria-label="Fulfilment progress">
+                <span class="progress-bar" style="width: {{ selected_pledge.fulfillment_percent }}%;"></span>
+            </div>
+        </div>
+        <dl class="meta-list queue-panel__meta">
+            <div>
+                <dt>Total Quantity</dt>
+                <dd>{{ selected_pledge.quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Allocated</dt>
+                <dd>{{ selected_pledge.allocated_quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Remaining</dt>
+                <dd>{{ selected_pledge.remaining_quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Deadline</dt>
+                <dd>{{ selected_pledge.needed_by_date or "No deadline set" }}</dd>
+            </div>
+            <div>
+                <dt>Target Price</dt>
+                <dd>{{ selected_pledge.target_price_per_kg if selected_pledge.target_price_per_kg is not none else "TBC" }}</dd>
+            </div>
+            <div>
+                <dt>Priority State</dt>
+                <dd>{{ selected_pledge.deadline_state|replace('_', ' ')|title }}</dd>
+            </div>
+        </dl>
+        <div class="queue-panel__notes">
+            <h3>Buyer Criteria</h3>
+            <p>{{ selected_pledge.criteria_summary }}</p>
+        </div>
+        <a class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
+        {% else %}
+        <p class="empty-state">Select a buyer pledge from the table to review its details and next steps.</p>
+        {% endif %}
+    </aside>
 </section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    for (const row of document.querySelectorAll(".queue-row[data-select-url]")) {
+        const navigate = () => {
+            const url = row.dataset.selectUrl;
+            if (url) {
+                window.location.href = url;
+            }
+        };
+
+        row.addEventListener("click", navigate);
+        row.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                navigate();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

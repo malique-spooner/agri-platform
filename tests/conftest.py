@@ -21,6 +21,7 @@ def build_test_database(database_path: Path) -> None:
     generate_dataset(
         SimpleNamespace(
             buyers=8,
+            buyer_pledges_total=12,
             farmers=12,
             max_buyer_pledges=3,
             max_farmer_pledges=4,

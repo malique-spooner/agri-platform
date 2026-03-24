@@ -124,16 +124,19 @@ def ensure_schema_columns(connection: sqlite3.Connection) -> None:
 
     for column_name, alter_statement in REQUIRED_FARMER_ACCOUNT_COLUMNS.items():
         if column_name not in farmer_account_columns:
+            logger.info("Adding missing farmer_accounts column: %s", column_name)
             connection.execute(alter_statement)
 
     for column_name, alter_statement in REQUIRED_FARM_INPUT_LOG_COLUMNS.items():
         if column_name not in farm_input_log_columns:
+            logger.info("Adding missing farm_input_logs column: %s", column_name)
             connection.execute(alter_statement)
 
 
 def initialise_database(database_path: Path = DATABASE_PATH) -> Path:
     """Create the database file and ensure all tables exist."""
     DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Initialising database schema at %s", database_path)
 
     with sqlite3.connect(database_path) as connection:
         connection.execute("PRAGMA foreign_keys = ON;")
@@ -141,6 +144,7 @@ def initialise_database(database_path: Path = DATABASE_PATH) -> Path:
         ensure_schema_columns(connection)
         connection.commit()
 
+    logger.info("Database schema ready at %s", database_path)
     return database_path
 
 

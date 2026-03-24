@@ -294,6 +294,355 @@ a {
     background: linear-gradient(90deg, #5d8a62 0%, #2f5f43 100%);
 }
 
+.progress-track--stacked {
+    display: flex;
+    gap: 0;
+}
+
+.progress-segment {
+    display: block;
+    height: 100%;
+}
+
+.progress-segment--submitted {
+    background: #2f5f43;
+}
+
+.progress-segment--staged {
+    background: #90b99a;
+}
+
+.queue-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.queue-table-wrap {
+    min-height: 28rem;
+}
+
+.queue-table th {
+    white-space: nowrap;
+}
+
+.queue-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.queue-row {
+    cursor: pointer;
+}
+
+.queue-row:hover,
+.queue-row:focus-visible {
+    background: #f6f9f2;
+    outline: none;
+}
+
+.queue-row--selected {
+    background: #eef4e9;
+}
+
+.row-link {
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.queue-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 140px;
+}
+
+.queue-progress .progress-track {
+    flex: 1;
+    height: 8px;
+}
+
+.queue-progress__label {
+    font-size: 0.8rem;
+    color: #5c6b60;
+    white-space: nowrap;
+}
+
+.queue-panel {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.queue-panel h2 {
+    margin-top: 0;
+}
+
+.queue-panel__header h3 {
+    margin-bottom: 0.15rem;
+}
+
+.queue-panel__meta {
+    margin-top: 1rem;
+}
+
+.queue-panel__notes {
+    margin: 1rem 0 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #e1e7da;
+}
+
+.queue-panel__notes h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+}
+
+.queue-panel__notes p {
+    margin: 0;
+    color: #4f6053;
+}
+
+.primary-link-button {
+    display: inline-block;
+    padding: 0.72rem 1rem;
+    border-radius: 10px;
+    border: 1px solid #294933;
+    background: #294933;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.allocation-layout {
+    align-items: stretch;
+}
+
+.allocation-shell {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.allocation-sidebar {
+    position: static;
+}
+
+.allocation-sidebar__actions {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.allocation-header {
+    margin-bottom: 0.9rem;
+}
+
+.allocation-header h2 {
+    margin: 0 0 0.15rem;
+    font-size: 1.1rem;
+}
+
+.allocation-input {
+    width: 7rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #ccd5c4;
+    border-radius: 8px;
+    font: inherit;
+    background: #fbfcf8;
+}
+
+.allocation-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem;
+    border-top: 1px solid #e2e8db;
+    background: #fcfdf9;
+}
+
+.allocation-actions button {
+    padding: 0.72rem 1rem;
+    border-radius: 10px;
+    border: 1px solid #294933;
+    background: #294933;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.secondary-button {
+    padding: 0.62rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid #b8c5b0;
+    background: #ffffff;
+    color: #294933;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.allocation-summary-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: #4f6053;
+}
+
+.allocation-summary-list--actions {
+    padding-left: 0;
+    list-style: none;
+}
+
+.allocation-summary-list--actions li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.55rem;
+}
+
+.criteria-panel {
+    display: grid;
+    gap: 0.9rem;
+    margin: 1rem 0;
+}
+
+.criteria-list {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+    color: #4f6053;
+}
+
+.offer-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.offer-card {
+    background: #ffffff;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.offer-card--selected {
+    border-color: #b6cdb6;
+    box-shadow: 0 0 0 2px rgba(93, 138, 98, 0.08);
+}
+
+.offer-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.offer-card__header h3,
+.offer-card__criteria h4 {
+    margin: 0;
+}
+
+.offer-card__meta {
+    margin-bottom: 0.9rem;
+}
+
+.offer-card__criteria {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #e1e7da;
+}
+
+.offer-card__actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+    padding-top: 0.9rem;
+    border-top: 1px solid #e1e7da;
+}
+
+.offer-card__suggestion p {
+    margin: 0;
+}
+
+.offer-card__links {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.offer-card__links form {
+    margin: 0;
+}
+
+.allocation-toggle {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.allocation-toggle label {
+    display: flex;
+    gap: 0.55rem;
+    align-items: center;
+    color: #4f6053;
+}
+
+.allocation-flag,
+.allocation-pass {
+    margin: 0.35rem 0 0;
+}
+
+.allocation-flag {
+    color: #7b3b22;
+}
+
+.allocation-pass {
+    color: #285241;
+}
+
+.allocation-errors,
+.allocation-success {
+    margin: 0 0 1rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 10px;
+}
+
+.allocation-errors {
+    border: 1px solid #e2c4b7;
+    background: #faf0eb;
+    color: #7b3b22;
+}
+
+.allocation-errors p {
+    margin: 0 0 0.45rem;
+}
+
+.allocation-errors p:last-child {
+    margin-bottom: 0;
+}
+
+.allocation-success {
+    border: 1px solid #c8dcbc;
+    background: #edf6e8;
+    color: #285241;
+}
+
 .farm-card,
 .info-card,
 .stat-card {
@@ -411,8 +760,24 @@ a {
         grid-template-columns: 1fr;
     }
 
+    .allocation-shell,
+    .queue-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .allocation-sidebar,
+    .queue-panel {
+        position: static;
+    }
+
     .detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .offer-card__criteria,
+    .offer-card__actions {
+        grid-template-columns: 1fr;
+        display: grid;
     }
 
     .farm-card__stats,

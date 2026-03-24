@@ -3,7 +3,7 @@
 import json
 import sqlite3
 
-from logic.database_helpers import get_all_buyer_pledges, get_all_farms
+from logic.database_helpers import get_all_buyer_pledges, get_all_farms, persist_confirmed_allocation
 
 SUPPORTED_AFRICAN_COUNTRIES = {
     "Kenya",
@@ -239,6 +239,10 @@ def test_buyer_pledge_notes_are_valid_json(test_database_path):
         assert isinstance(parsed, dict)
         assert "priority" in parsed
         assert "organic_preference" in parsed
+        assert "required_inputs" in parsed
+        assert "blocked_inputs" in parsed
+        assert isinstance(parsed["required_inputs"], list)
+        assert isinstance(parsed["blocked_inputs"], list)
 
 
 def test_deadlines_do_not_precede_creation_dates(test_database_path):
@@ -328,3 +332,45 @@ def test_input_logs_include_specific_product_and_method_details(test_database_pa
     assert missing_methods == 0
     assert branded_logs > 0
     assert category_count >= 4
+
+
+def test_persist_confirmed_allocation_writes_rows_and_updates_statuses(test_database_path):
+    """Submitting a confirmed allocation should insert rows and refresh pledge statuses."""
+    with sqlite3.connect(test_database_path) as connection:
+        buyer_pledge_id, farmer_pledge_id = connection.execute(
+            """
+            SELECT bp.buyer_pledge_id, fp.farmer_pledge_id
+            FROM buyer_pledges AS bp
+            INNER JOIN farmer_pledges AS fp
+                ON bp.crop_type = fp.crop_type
+            LIMIT 1
+            """
+        ).fetchone()
+
+        before_count = connection.execute(
+            "SELECT COUNT(*) FROM pledge_allocations WHERE buyer_pledge_id = ? AND farmer_pledge_id = ?",
+            (buyer_pledge_id, farmer_pledge_id),
+        ).fetchone()[0]
+
+    persist_confirmed_allocation(
+        buyer_pledge_id=buyer_pledge_id,
+        selected_rows=[{"farmer_pledge_id": farmer_pledge_id, "draft_quantity_kg": 1}],
+    )
+
+    with sqlite3.connect(test_database_path) as connection:
+        after_count = connection.execute(
+            "SELECT COUNT(*) FROM pledge_allocations WHERE buyer_pledge_id = ? AND farmer_pledge_id = ?",
+            (buyer_pledge_id, farmer_pledge_id),
+        ).fetchone()[0]
+        buyer_status = connection.execute(
+            "SELECT pledge_status FROM buyer_pledges WHERE buyer_pledge_id = ?",
+            (buyer_pledge_id,),
+        ).fetchone()[0]
+        farmer_status = connection.execute(
+            "SELECT pledge_status FROM farmer_pledges WHERE farmer_pledge_id = ?",
+            (farmer_pledge_id,),
+        ).fetchone()[0]
+
+    assert after_count == before_count + 1
+    assert buyer_status in {"partial", "fulfilled"}
+    assert farmer_status in {"partial", "allocated"}

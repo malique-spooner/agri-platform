@@ -2,6 +2,78 @@ Date:
 2026-03-24
 
 Task:
+Completed the core server-rendered allocation workflow, rebalanced the demo dataset, removed dead placeholder assets, and tightened project logging, documentation, and automated test coverage.
+
+What changed:
+The buyer pledge homepage was reworked into a more compact aggregator queue with a selected-detail panel so the landing page now functions as a worklist rather than a dense set of cards. Status wording was simplified to presentation labels that are easier to scan, and the queue now supports row selection, filtering, sorting, and clearer prioritisation of active demand.
+
+The allocation workflow was then promoted from placeholder templates into a real server-rendered flow. A new allocation builder page was connected to buyer pledges, eligible farm pledges are filtered by crop and buyer criteria, and a staging model was introduced so the aggregator can add or remove farm contributions before committing them. Submission is now wired through to the SQLite database, which means confirmed allocation rows are inserted into `pledge_allocations` and the related buyer and farmer pledge statuses are recalculated immediately after submission. The allocation progress bar was also refined so it distinguishes between already submitted quantities, currently staged quantities, and remaining unmet demand.
+
+The synthetic dataset was rebalanced to make the prototype easier to use during demonstrations. Instead of a much larger and more repetitive dataset, generation is now centred on exactly 20 buyer pledges and a smaller supporting set of farmers, farmer pledges, allocations, and crop input logs. Buyer organisation names were replaced with spoofed, recognisable brand-inspired names to make the data easier to scan and remember. This reduced clutter on the buyer and allocation pages while still leaving enough variation to demonstrate workflow logic.
+
+Placeholder files that were confirmed to have no role in the live Flask app were removed from the project. This included obsolete allocation placeholder templates, placeholder static assets, and the unused `home.html` template once `/` had been fully committed as a redirect to the buyer pledge queue. The repository structure now reflects the actual running prototype more closely.
+
+Project-wide logging and test support were also tightened. Runtime logging configuration was updated so file logging is reliably configured to `logs/app.log`, route and database helper logging was expanded for allocation actions and setup/generation steps, the README was updated to match the current project structure and commands, `.gitignore` was expanded to cover local junk and pytest cache artefacts, and `pyproject.toml` now has stronger pytest configuration and explicit dev dependency support. A new database-helper test file was added so helper logic is now tested directly rather than only through route or end-to-end behaviour.
+
+Why this was done:
+These changes were needed to move the prototype from a collection of partially connected pages into a more coherent Version 0 workflow. The allocator-facing path now has a clear sequence: review demand, inspect eligible supply, stage contributions, and commit confirmed allocations. Reducing the dataset size was equally important because earlier volumes made the interface feel repetitive and harder to reason about during manual review.
+
+Design reasoning:
+The allocation workflow was deliberately kept server-rendered and session-backed rather than introducing a richer JavaScript state layer. This keeps the architecture consistent with the rest of the Flask prototype and makes state transitions easier to reason about while the core business logic is still being established.
+
+The staging model creates a useful separation between temporary user choices and confirmed database state. This is an important architectural boundary because future export/report features and auditability depend on being able to distinguish between a working draft and a persisted allocation.
+
+The additional database-helper tests were added because route tests alone are too coarse to validate derived values such as criteria summaries, deadline state classification, remaining quantity calculations, and bulk input-log retrieval. Testing those helper functions directly improves confidence in the application logic layer described in the report.
+
+Problems encountered:
+As the allocation builder became real, there was a risk of confusing staged session data with committed database data. This was addressed by making submission the only point at which database writes occur and by updating the allocation page to present staged content separately from already submitted quantities.
+
+Another issue was that runtime logging still existed but had become too easy to misread as stale because configuration and coverage were inconsistent. The logging setup was revised so that shared handlers are configured more predictably and more route/helper events are written to the application log.
+
+Solution applied:
+Implemented the buyer queue redesign, added a live allocation builder route and supporting allocation logic, connected submission to the SQLite database, rebalanced the generated dataset around 20 buyer pledges, removed dead placeholder files, tightened logging configuration and coverage, updated project metadata/documentation, and added direct database-helper tests.
+
+Files affected:
+- `app.py`
+- `database/generate_data.py`
+- `database/setup_database.py`
+- `docs/dev_log.txt`
+- `logic/allocation_logic.py`
+- `logic/database_helpers.py`
+- `logic/logging_config.py`
+- `pages/build_allocation.html`
+- `pages/buyer_pledges.html`
+- `pages/reusable/navbar.html`
+- `pyproject.toml`
+- `README.md`
+- `.gitignore`
+- `static/css/main.css`
+- `tests/conftest.py`
+- `tests/database/test_database.py`
+- `tests/database/test_database_helpers.py`
+- `tests/logic/test_allocation_logic.py`
+- `tests/pages/test_allocations.py`
+- `tests/pages/test_buyer_pledges.py`
+
+Testing performed:
+Ran:
+- `./venv/bin/python database/setup_database.py`
+- `./venv/bin/python database/generate_data.py`
+- `./venv/bin/python -m pytest -q`
+
+Results:
+- database setup completed successfully,
+- the demo database was regenerated around 20 buyer pledges,
+- helper, route, logic, and database tests all passed,
+- and the full suite passed with 53 tests.
+
+Reflection:
+This set of changes made the prototype more coherent as a coordination tool. The interface now better matches the intended aggregator workflow, the dataset is easier to work with, and the application logic is better supported by both runtime logging and direct automated tests. The project is also cleaner structurally because dead placeholder assets and stale documentation have been reduced, which should make the next stage of work easier to implement and explain.
+
+Date:
+2026-03-24
+
+Task:
 Implemented the aggregator-facing pledge and farm browsing workflow, including buyer pledge management, a simplified farm directory, farm profile drill-down, African coordinate-backed map display, and a more structured crop input log model.
 
 What changed:

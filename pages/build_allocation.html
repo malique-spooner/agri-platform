@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Build Allocation | Agri Platform{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <p class="eyebrow"><a href="{{ url_for('buyer_pledges', selected=buyer_pledge.buyer_pledge_id) }}">Buyer Pledges</a></p>
+    <h1>Build Allocation</h1>
+    <p class="lede">Compare buyer requirements with what has actually been recorded on each crop offer, then build a draft allocation using a standard Flask form.</p>
+</section>
+
+<section class="allocation-shell">
+    <aside class="info-card allocation-sidebar">
+        <h2>{{ buyer_pledge.organisation_name }}</h2>
+        <p class="management-card__crop">{{ buyer_pledge.crop_type }}</p>
+        <span class="status-pill status-pill--{{ buyer_pledge.pledge_status }}">{{ buyer_pledge.display_status }}</span>
+
+        <dl class="meta-list queue-panel__meta">
+            <div>
+                <dt>Total Quantity</dt>
+                <dd>{{ buyer_pledge.quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Allocated Already</dt>
+                <dd>{{ buyer_pledge.allocated_quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Remaining Demand</dt>
+                <dd>{{ buyer_pledge.remaining_quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Deadline</dt>
+                <dd>{{ buyer_pledge.needed_by_date or "No deadline set" }}</dd>
+            </div>
+        </dl>
+
+        <div class="queue-panel__notes">
+            <h3>Buyer Criteria Summary</h3>
+            <p>{{ buyer_pledge.criteria_summary }}</p>
+        </div>
+
+        <div class="criteria-panel">
+            <div>
+                <h3>Must Be Recorded</h3>
+                {% if buyer_pledge.criteria.required_inputs %}
+                <ul class="criteria-list">
+                    {% for criterion in buyer_pledge.criteria.required_inputs %}
+                    <li>{{ criterion.input_type }}{% if criterion.product_name %} · {{ criterion.product_name }}{% endif %}{% if criterion.brand_name %} · {{ criterion.brand_name }}{% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="table-subtle">No mandatory practices recorded for this pledge.</p>
+                {% endif %}
+            </div>
+            <div>
+                <h3>Must Not Be Recorded</h3>
+                {% if buyer_pledge.criteria.blocked_inputs %}
+                <ul class="criteria-list">
+                    {% for criterion in buyer_pledge.criteria.blocked_inputs %}
+                    <li>{{ criterion.input_type }}{% if criterion.product_name %} · {{ criterion.product_name }}{% endif %}{% if criterion.brand_name %} · {{ criterion.brand_name }}{% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="table-subtle">No blocked inputs are listed for this pledge.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if draft_allocation.errors %}
+        <div class="allocation-errors">
+            {% for error in draft_allocation.errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="progress-block">
+            <div class="progress-block__labels">
+                <span>Submitted: {{ buyer_pledge.allocated_quantity_kg }} kg</span>
+                <span>Staged: {{ draft_allocation.total_allocated_kg }} kg</span>
+                <span>Remaining after submit: {{ draft_allocation.remaining_after_kg }} kg</span>
+            </div>
+            <div class="progress-track progress-track--stacked" aria-label="Allocation progress">
+                <span
+                    class="progress-segment progress-segment--submitted"
+                    style="width: {{ ((buyer_pledge.allocated_quantity_kg / buyer_pledge.quantity_kg) * 100) if buyer_pledge.quantity_kg else 0 }}%;"
+                ></span>
+                <span
+                    class="progress-segment progress-segment--staged"
+                    style="width: {{ ((draft_allocation.total_allocated_kg / buyer_pledge.quantity_kg) * 100) if buyer_pledge.quantity_kg else 0 }}%;"
+                ></span>
+            </div>
+        </div>
+
+        <div class="queue-panel__notes">
+            <h3>Staged For Submission</h3>
+            {% if draft_allocation.selected_rows %}
+            <ul class="allocation-summary-list allocation-summary-list--actions">
+                {% for row in draft_allocation.selected_rows %}
+                <li>
+                    <span>{{ row.farm_name }} · {{ row.draft_quantity_kg }} kg</span>
+                    <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="selected_offer_id" value="{{ row.farmer_pledge_id }}">
+                        {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                        <button type="submit" class="secondary-button">Remove</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No farm contributions are currently staged for submission.</p>
+            {% endif %}
+        </div>
+
+        {% if submission_message %}
+        <p class="allocation-success">{{ submission_message }}</p>
+        {% endif %}
+
+        {% if draft_allocation.is_complete %}
+        <p class="allocation-success">This draft reaches the remaining buyer demand.</p>
+        {% endif %}
+
+        <div class="allocation-sidebar__actions">
+            <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                <input type="hidden" name="action" value="submit">
+                {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                <button type="submit" class="secondary-button">Submit allocation</button>
+            </form>
+            <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                <input type="hidden" name="action" value="export_buyer_summary">
+                {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                <button type="submit" class="secondary-button">Export buyer summary</button>
+            </form>
+            <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                <input type="hidden" name="action" value="export_farm_summary">
+                {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                <button type="submit" class="secondary-button">Export farm summary</button>
+            </form>
+        </div>
+    </aside>
+
+    <div>
+        <div class="allocation-header">
+            <h2>Matching Crop Offers</h2>
+            <p class="table-subtle">Use the compatibility summary to see whether each crop offer already satisfies the buyer pledge rules.</p>
+        </div>
+
+        <form class="allocation-toggle" method="get" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id) }}">
+            <label>
+                <input type="checkbox" name="hide_ineligible" value="1" {% if hide_ineligible %}checked{% endif %}>
+                Hide ineligible crop offers
+            </label>
+            <button type="submit" class="secondary-button">Update view</button>
+        </form>
+
+        <div class="offer-grid">
+            {% if eligible_pledges %}
+            {% for pledge in eligible_pledges %}
+            <article class="offer-card {% if pledge.is_added %}offer-card--selected{% endif %}">
+                <div class="offer-card__header">
+                    <div>
+                        <h3>{{ pledge.farm_name }}</h3>
+                        <p class="table-subtle">{{ pledge.farmer_name }} · {{ pledge.county }}{% if pledge.county and pledge.region %}, {% endif %}{{ pledge.region }}</p>
+                    </div>
+                    <span class="status-pill status-pill--{{ 'fulfilled' if pledge.criteria_status == 'eligible' else 'partial' if pledge.criteria_status == 'review' else 'open' }}">{{ pledge.criteria_message }}</span>
+                </div>
+
+                <dl class="meta-list offer-card__meta">
+                    <div>
+                        <dt>Available</dt>
+                        <dd>{{ pledge.available_quantity_kg }} kg</dd>
+                    </div>
+                    <div>
+                        <dt>Suggested Draft Qty</dt>
+                        <dd>{{ pledge.suggested_quantity_kg }} kg</dd>
+                    </div>
+                    <div>
+                        <dt>Available From</dt>
+                        <dd>{{ pledge.available_from_date or "TBC" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Price</dt>
+                        <dd>{{ pledge.asking_price_per_kg if pledge.asking_price_per_kg is not none else "TBC" }}</dd>
+                    </div>
+                </dl>
+
+                <div class="offer-card__criteria">
+                    <div>
+                        <h4>Recent Recorded Actions</h4>
+                        {% if pledge.recent_inputs %}
+                        <ul class="criteria-list">
+                            {% for item in pledge.recent_inputs %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="table-subtle">No crop-specific input actions recorded yet.</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h4>Buyer Rule Check</h4>
+                        {% if pledge.blocked_matches %}
+                        <p class="allocation-flag">Blocked matches: {{ pledge.blocked_matches|join(', ') }}</p>
+                        {% endif %}
+                        {% if pledge.missing_required %}
+                        <p class="allocation-flag">Missing required: {{ pledge.missing_required|join(', ') }}</p>
+                        {% endif %}
+                        {% if not pledge.blocked_matches and not pledge.missing_required %}
+                        <p class="allocation-pass">No rule conflicts found for this crop offer.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="offer-card__actions">
+                    <div class="offer-card__suggestion">
+                        {% if pledge.is_added %}
+                        <p class="allocation-pass">Added to draft batch.</p>
+                        {% elif not pledge.is_selectable %}
+                        <p class="allocation-flag">This crop offer cannot be added until the buyer rule issues are resolved.</p>
+                        {% elif pledge.suggested_quantity_kg <= 0 %}
+                        <p class="table-subtle">No remaining demand is left to allocate.</p>
+                        {% else %}
+                        <p class="allocation-pass">Press add to use {{ pledge.suggested_quantity_kg }} kg automatically.</p>
+                        {% endif %}
+                    </div>
+                    <div class="offer-card__links">
+                        <a class="text-link" href="{{ url_for('farm_profile', farm_id=pledge.farmer_account_id) }}">View farm</a>
+                        <a class="text-link" href="{{ url_for('farm_pledge_detail', farm_id=pledge.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">View crop history</a>
+                        <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                            <input type="hidden" name="action" value="add">
+                            <input type="hidden" name="selected_offer_id" value="{{ pledge.farmer_pledge_id }}">
+                            {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                            <button
+                                type="submit"
+                                class="secondary-button"
+                                {% if not pledge.is_selectable or pledge.is_added or pledge.suggested_quantity_kg <= 0 %}disabled{% endif %}
+                            >Add</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+            {% else %}
+            <p class="empty-state">No eligible farms currently match this buyer pledge.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

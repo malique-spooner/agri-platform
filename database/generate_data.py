@@ -86,31 +86,28 @@ LAST_NAMES = [
     "Ouma",
     "Chebet",
 ]
-BUYER_PREFIXES = [
-    "Green",
-    "Harvest",
-    "Fresh",
-    "River",
-    "Market",
-    "Community",
-    "Metro",
-    "School",
-    "Urban",
-    "Regional",
+BUYER_SPOOF_NAMES = [
+    "Starbarks Coffee Collective",
+    "Costa Packet Roasters",
+    "Cocoa-Kalo Distributors",
+    "McDarnell Foods",
+    "SubKing Sandwich Supply",
+    "Pepsino Beverage Group",
+    "Burger Queen Kitchens",
+    "Taco Smell Catering",
+    "Dunkin Beans Trading",
+    "Nestleaf Pantry Co-op",
+    "Pringlish Snacks Network",
+    "KitNotKat Wholesale",
+    "KFG Meal Partners",
+    "Dominoh Pizza Hub",
+    "Red Grazing Coffee Ltd",
+    "Seven-Elevenish Stores",
+    "Wok to Wok Express",
+    "Amazin Fresh Markets",
+    "Ikea Feast Services",
+    "Lidll Bit More Foods",
 ]
-BUYER_SUFFIXES = [
-    "Basket",
-    "Foods",
-    "Supply",
-    "Collective",
-    "Hub",
-    "Markets",
-    "Stores",
-    "Kitchen",
-    "Distributors",
-    "Partnership",
-]
-BUYER_TYPES = ["Co-op", "Ltd", "Network", "Group", "Association"]
 FARM_PREFIXES = [
     "Sunrise",
     "Riverbend",
@@ -195,11 +192,12 @@ INPUT_CATALOG = [
 def parse_args() -> argparse.Namespace:
     """Parse generation parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--buyers", type=int, default=120)
-    parser.add_argument("--farmers", type=int, default=180)
-    parser.add_argument("--max-buyer-pledges", type=int, default=5)
-    parser.add_argument("--max-farmer-pledges", type=int, default=6)
-    parser.add_argument("--max-input-logs", type=int, default=10)
+    parser.add_argument("--buyers", type=int, default=20)
+    parser.add_argument("--buyer-pledges-total", type=int, default=20)
+    parser.add_argument("--farmers", type=int, default=45)
+    parser.add_argument("--max-buyer-pledges", type=int, default=2)
+    parser.add_argument("--max-farmer-pledges", type=int, default=3)
+    parser.add_argument("--max-input-logs", type=int, default=5)
     parser.add_argument("--seed", type=int, default=20260324)
     parser.add_argument("--database-path", type=Path, default=DATABASE_PATH)
     return parser.parse_args()
@@ -234,15 +232,60 @@ def random_name(rng: random.Random) -> str:
 
 def build_buyer_name(rng: random.Random, index: int) -> str:
     """Return a deterministic organisation name."""
-    return (
-        f"{rng.choice(BUYER_PREFIXES)} {rng.choice(BUYER_SUFFIXES)} "
-        f"{rng.choice(BUYER_TYPES)} {index + 1}"
-    )
+    if index < len(BUYER_SPOOF_NAMES):
+        return BUYER_SPOOF_NAMES[index]
+    return f"{rng.choice(BUYER_SPOOF_NAMES)} {index + 1}"
 
 
-def build_farm_name(rng: random.Random) -> str:
-    """Return a farm name."""
-    return f"{rng.choice(FARM_PREFIXES)} {rng.choice(FARM_SUFFIXES)}"
+def build_farm_name(rng: random.Random, index: int, county: str) -> str:
+    """Return a less repetitive farm name."""
+    county_token = county.split()[0]
+    return f"{rng.choice(FARM_PREFIXES)} {county_token} {rng.choice(FARM_SUFFIXES)} {index + 1}"
+
+
+def build_buyer_criteria_payload(
+    rng: random.Random,
+    crop_type: str,
+) -> dict[str, object]:
+    """Return structured buyer criteria that can be matched against input logs."""
+    catalog_for_crop = [record for record in INPUT_CATALOG if record["input_type"] != "Seed treatment"]
+    required_count = rng.choices([0, 1, 2], weights=[4, 4, 2], k=1)[0]
+    blocked_count = rng.choices([0, 1, 2], weights=[3, 5, 2], k=1)[0]
+
+    required_inputs = []
+    blocked_inputs = []
+
+    for record in rng.sample(catalog_for_crop, k=min(required_count, len(catalog_for_crop))):
+        required_inputs.append(
+            {
+                "input_type": record["input_type"],
+                "product_name": record["product_name"],
+                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.6 else None,
+            }
+        )
+
+    remaining_catalog = [
+        record
+        for record in catalog_for_crop
+        if record["product_name"] not in {item["product_name"] for item in required_inputs}
+    ]
+    for record in rng.sample(remaining_catalog, k=min(blocked_count, len(remaining_catalog))):
+        blocked_inputs.append(
+            {
+                "input_type": record["input_type"],
+                "product_name": record["product_name"],
+                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.75 else None,
+            }
+        )
+
+    return {
+        "priority": rng.choice(["standard", "nutrition-programme", "bulk-distribution"]),
+        "organic_preference": rng.choice([True, False]),
+        "delivery_window_days": rng.randint(3, 21),
+        "crop_type": crop_type,
+        "required_inputs": required_inputs,
+        "blocked_inputs": blocked_inputs,
+    }
 
 
 def random_phone(rng: random.Random) -> str:
@@ -352,12 +395,12 @@ def insert_farmer_accounts(
     """Insert farmer accounts and return the inserted records."""
     farmers: list[dict[str, object]] = []
     region_names = sorted(REGIONS)
-    for _ in range(farmer_count):
+    for index in range(farmer_count):
         created_at = random_datetime(rng, now)
         farmer_name = random_name(rng)
-        farm_name = build_farm_name(rng)
         region = rng.choice(region_names)
         county = rng.choice(REGIONS[region])
+        farm_name = build_farm_name(rng, index, county)
         latitude, longitude = random_coordinates_for_region(rng, region)
         email_name = farmer_name.lower().replace(" ", ".")
         email = maybe_none(rng, f"{email_name}@farmers.example", 0.35)
@@ -405,12 +448,37 @@ def insert_buyer_pledges(
     rng: random.Random,
     buyers: list[dict[str, object]],
     max_pledges: int,
+    total_pledges: int,
 ) -> list[dict[str, object]]:
     """Insert buyer pledges with realistic demand variation."""
-    zero_indexes = set(rng.sample(range(len(buyers)), k=min(max(1, len(buyers) // 10), len(buyers))))
+    if not buyers or max_pledges <= 0 or total_pledges <= 0:
+        return []
+
+    buyer_count = len(buyers)
+    total_pledges = min(total_pledges, buyer_count * max_pledges)
+    pledge_counts = [0] * buyer_count
+
+    if total_pledges <= buyer_count:
+        for index in rng.sample(range(buyer_count), k=total_pledges):
+            pledge_counts[index] = 1
+    else:
+        for index in range(buyer_count):
+            pledge_counts[index] = 1
+        remaining = total_pledges - buyer_count
+        expandable_indexes = [index for index in range(buyer_count) if max_pledges > 1]
+        while remaining > 0 and expandable_indexes:
+            index = rng.choice(expandable_indexes)
+            if pledge_counts[index] < max_pledges:
+                pledge_counts[index] += 1
+                remaining -= 1
+            if pledge_counts[index] >= max_pledges:
+                expandable_indexes = [
+                    candidate for candidate in expandable_indexes if pledge_counts[candidate] < max_pledges
+                ]
+
     pledges: list[dict[str, object]] = []
     for index, buyer in enumerate(buyers):
-        pledge_count = choose_pledge_count(rng, max_pledges, zero_indexes, index)
+        pledge_count = pledge_counts[index]
         for _ in range(pledge_count):
             created_at = buyer["created_at"] + timedelta(days=rng.randint(0, 30))
             crop_type = choose_crop(rng, BUYER_CROP_WEIGHTS)
@@ -421,11 +489,7 @@ def insert_buyer_pledges(
                 iso_date(created_at + timedelta(days=rng.randint(14, 180))),
                 0.12,
             )
-            notes_payload = {
-                "priority": rng.choice(["standard", "nutrition-programme", "bulk-distribution"]),
-                "organic_preference": rng.choice([True, False]),
-                "delivery_window_days": rng.randint(3, 21),
-            }
+            notes_payload = build_buyer_criteria_payload(rng, crop_type)
             notes = json.dumps(notes_payload, sort_keys=True)
             cursor = connection.execute(
                 """
@@ -1010,6 +1074,15 @@ def generate_dataset(args: argparse.Namespace) -> None:
     """Create schema, populate synthetic data, validate it, and print a summary."""
     rng = random.Random(args.seed)
     now = datetime.now()
+    logger.info(
+        "Generating dataset buyers=%s buyer_pledges_total=%s farmers=%s max_farmer_pledges=%s max_input_logs=%s db=%s",
+        args.buyers,
+        args.buyer_pledges_total,
+        args.farmers,
+        args.max_farmer_pledges,
+        args.max_input_logs,
+        args.database_path,
+    )
 
     initialise_database(args.database_path)
     with sqlite3.connect(args.database_path) as connection:
@@ -1017,7 +1090,13 @@ def generate_dataset(args: argparse.Namespace) -> None:
         clear_existing_data(connection)
         buyers = insert_buyer_accounts(connection, rng, args.buyers, now)
         farmers = insert_farmer_accounts(connection, rng, args.farmers, now)
-        buyer_pledges = insert_buyer_pledges(connection, rng, buyers, args.max_buyer_pledges)
+        buyer_pledges = insert_buyer_pledges(
+            connection,
+            rng,
+            buyers,
+            args.max_buyer_pledges,
+            args.buyer_pledges_total,
+        )
         farmer_pledges = insert_farmer_pledges(connection, rng, farmers, args.max_farmer_pledges)
         insert_allocations(connection, rng, buyer_pledges, farmer_pledges)
         insert_farm_input_logs(connection, rng, farmers, farmer_pledges, args.max_input_logs, now)
@@ -1030,6 +1109,8 @@ def generate_dataset(args: argparse.Namespace) -> None:
         validate_input_log_structure(connection)
         validate_allocations(connection)
         validate_status_coverage(connection)
+        logger.info("Synthetic dataset validation completed successfully")
+        logger.info("Synthetic dataset counts: %s", table_counts(connection))
         print_summary(connection)
 
 

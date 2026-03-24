@@ -16,15 +16,28 @@ LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 def configure_logging(level: int = logging.INFO) -> Path:
     """Configure shared application logging and return the log file path."""
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    APP_LOG_PATH.touch(exist_ok=True)
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
-    if not any(
-        isinstance(handler, RotatingFileHandler)
-        and Path(getattr(handler, "baseFilename", "")) == APP_LOG_PATH
-        for handler in root_logger.handlers
-    ):
+    for handler in list(root_logger.handlers):
+        if isinstance(handler, RotatingFileHandler) and Path(
+            getattr(handler, "baseFilename", "")
+        ) != APP_LOG_PATH:
+            root_logger.removeHandler(handler)
+            handler.close()
+
+    file_handler = next(
+        (
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, RotatingFileHandler)
+            and Path(getattr(handler, "baseFilename", "")) == APP_LOG_PATH
+        ),
+        None,
+    )
+    if file_handler is None:
         file_handler = RotatingFileHandler(
             APP_LOG_PATH,
             maxBytes=1_048_576,
@@ -32,13 +45,25 @@ def configure_logging(level: int = logging.INFO) -> Path:
             encoding="utf-8",
         )
         file_handler.setLevel(level)
-        file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
         root_logger.addHandler(file_handler)
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
 
-    if not any(isinstance(handler, logging.StreamHandler) for handler in root_logger.handlers):
+    console_handler = next(
+        (
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, RotatingFileHandler)
+        ),
+        None,
+    )
+    if console_handler is None:
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(level)
-        console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
         root_logger.addHandler(console_handler)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+    logging.getLogger("werkzeug").setLevel(level)
+    logging.captureWarnings(True)
 
     return APP_LOG_PATH
