@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Crop Offer Details | Agri Platform{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <p class="eyebrow"><a href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">{{ farm.farm_name }}</a></p>
+    <h1>{{ pledge.crop_type }} Offer Details</h1>
+    <p class="lede">Review the crop offer and all recorded input activity associated with this specific pledge.</p>
+</section>
+
+<section class="detail-grid">
+    <article class="info-card">
+        <h2>Crop Offer</h2>
+        <dl class="meta-list">
+            <div>
+                <dt>Farm</dt>
+                <dd>{{ farm.farm_name }}</dd>
+            </div>
+            <div>
+                <dt>Crop</dt>
+                <dd>{{ pledge.crop_type }}</dd>
+            </div>
+            <div>
+                <dt>Quantity</dt>
+                <dd>{{ pledge.quantity_kg }} kg</dd>
+            </div>
+            <div>
+                <dt>Asking Price</dt>
+                <dd>{{ pledge.asking_price_per_kg if pledge.asking_price_per_kg is not none else "TBC" }}</dd>
+            </div>
+            <div>
+                <dt>Available From</dt>
+                <dd>{{ pledge.available_from_date or "TBC" }}</dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>{{ pledge.pledge_status }}</dd>
+            </div>
+        </dl>
+    </article>
+
+    <article class="info-card">
+        <h2>Input Log History</h2>
+        <p class="table-subtle">Each log keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>Method</th>
+                    <th>Quantity</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if input_logs %}
+                {% for log in input_logs %}
+                <tr>
+                    <td>{{ log.log_date }}</td>
+                    <td>{{ log.input_type }}</td>
+                    <td>{{ log.product_name }}</td>
+                    <td>{{ log.brand_name or "Not brand-specific" }}</td>
+                    <td>{{ log.application_method }}</td>
+                    <td>{{ log.quantity }} {{ log.unit }}</td>
+                    <td>{{ log.notes or "No notes" }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="6">No input logs have been recorded for this crop offer yet.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% endblock %}

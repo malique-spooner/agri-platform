@@ -2,6 +2,77 @@ Date:
 2026-03-24
 
 Task:
+Implemented the aggregator-facing pledge and farm browsing workflow, including buyer pledge management, a simplified farm directory, farm profile drill-down, African coordinate-backed map display, and a more structured crop input log model.
+
+What changed:
+The homepage was simplified so that `/` now redirects directly to the buyer pledge management view. The buyer pledge page was redesigned from a plain listing into a clearer aggregator demand view with status-grouped sections for open, partially fulfilled, and fulfilled demand. The page now surfaces progress more intentionally, including fulfilment bars for partially fulfilled pledges, and reduces front-page clutter so the user can scan demand more quickly before drilling into later steps of the workflow.
+
+The farm directory was also redesigned as a compact comparison table rather than a more information-heavy card grid. Filtering and sorting were added so an aggregator can search by farm name, farmer name, region, crop type, and near-term availability. This improves shortlist building by making the directory a scanning tool rather than a detail page.
+
+Farm profiles were then extended into a more useful drill-down surface. Each farm profile now shows production pledges separately from the directory and includes a real Leaflet-based map widget driven by latitude and longitude stored in the database. The synthetic data generator and validation logic were updated so farm coordinates are realistic for supported countries in East and Southern Africa, with counties constrained to the correct country and coordinates constrained to country-specific bounds.
+
+The crop-offer detail workflow was also introduced. Rather than showing generic recent logs at the bottom of the farm profile, each production pledge now links to its own crop-offer detail page where the pledge-specific input history is displayed. This made the compliance and traceability information more logically tied to the exact crop offer being reviewed.
+
+Finally, the farm input log system was made more future-proof. Previously, logs only stored a broad `input_type`, which would not be sufficient for matching future buyer criteria such as required pesticides, banned fertiliser brands, or required application methods. The schema, synthetic data generator, retrieval helpers, and pledge detail page were updated so each log now stores a broad category together with more specific attributes: `product_name`, `brand_name`, and `application_method`. The generated data was also expanded substantially so crop offers now carry much richer input histories.
+
+Why this was done:
+These changes were needed to move the prototype closer to the actual aggregator workflow described in the report. The earlier pages technically displayed data, but they were too dense at the wrong level and not sufficiently structured for practical decision-making. The redesign separates scanning from inspection: the buyer pledge page is now for prioritising demand, the farm directory is for shortlisting suppliers, the farm profile is for reviewing a farm at a higher level, and the crop-offer detail page is where pledge-specific compliance context lives.
+
+The input log redesign was especially important because the future allocation workflow depends on comparing buyer requirements with production history. A generic input label is not enough for that. Adding structured product, brand, and method fields creates a clearer path toward matching buyer criteria against actual production activity later in development.
+
+Design reasoning:
+The frontend changes follow a drill-down design principle. High-level pages should help the aggregator decide where to look next, not force them to process all available detail at once. This is why the buyer pledge page and farm directory were simplified while the pledge-specific crop detail page was made more informative.
+
+The map is intentionally modest at this stage. Its current purpose is visual orientation and confirmation that location data is real and meaningful, not route optimisation or logistics analysis. However, storing realistic country-specific coordinates now creates a foundation for future distance or region-based allocation logic.
+
+The updated input-log structure preserves the original broad `input_type` category while extending it with more exact identifiers. This is preferable to replacing the category entirely because future rules may need to match at different levels of specificity. For example, a buyer may forbid all pesticides at the category level, or forbid only a particular product or brand within that category.
+
+Problems encountered:
+The farm profile and crop-offer flow required a restructuring of where log history was displayed. This meant the earlier “recent input logs” section on the farm profile had to be removed to avoid duplicating information at the wrong level.
+
+When the new structured input-log fields were added, a page-level test exposed a usability issue: if a crop offer had no logs yet, the detail page removed the table entirely, which meant the user could not still see the intended log structure. This was corrected by always rendering the table headers and using an empty-state row inside the table body when no records exist.
+
+Solution applied:
+Implemented server-side grouping and retrieval logic for buyer pledges, server-rendered filtering/sorting for farms, a dedicated farm pledge detail route, Leaflet map rendering on farm profiles, schema migration support for additional `farm_input_logs` fields, denser synthetic log generation, and expanded validation/tests to ensure the new structure remains consistent.
+
+Files affected:
+- `app.py`
+- `database/setup_database.py`
+- `database/generate_data.py`
+- `logic/database_helpers.py`
+- `pages/base.html`
+- `pages/buyer_pledges.html`
+- `pages/farms.html`
+- `pages/farm_profile.html`
+- `pages/farm_pledge_detail.html`
+- `static/css/main.css`
+- `tests/conftest.py`
+- `tests/database/test_database.py`
+- `tests/pages/test_home_page.py`
+- `tests/pages/test_buyer_pledges.py`
+- `tests/pages/test_farms.py`
+
+Testing performed:
+Ran:
+- `./venv/bin/python database/setup_database.py`
+- `./venv/bin/python database/generate_data.py`
+- `./venv/bin/python -m pytest tests/database/test_database.py tests/pages/test_farms.py -q`
+- `./venv/bin/python -m pytest -q`
+
+Results:
+- database schema migration completed successfully,
+- regenerated demo data passed validation with zero anomalies,
+- generated dataset included realistic African location data and substantially denser crop input histories,
+- focused farm/database tests passed,
+- and the full test suite passed with 33 tests.
+
+Reflection:
+This set of changes made the prototype behave more like a real coordination tool rather than a static data browser. The interaction model is now clearer: first prioritise demand, then shortlist farms, then inspect a farm, then inspect a specific crop offer and its input history. The structured input-log redesign is also an important architectural improvement because it anticipates future buyer-rule matching rather than locking the project into a weak logging model that would need to be redesigned later.
+
+Date:
+2026-03-24
+
+Task:
 Reworked the database setup, synthetic data generation, and database-focused testing into a single consolidated database workflow.
 
 What changed:

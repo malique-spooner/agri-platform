@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS farmer_accounts (
     farmer_name TEXT NOT NULL,
     county TEXT,
     region TEXT,
+    latitude REAL,
+    longitude REAL,
     email TEXT,
     phone TEXT,
     total_hectares REAL,
@@ -84,6 +86,9 @@ CREATE TABLE IF NOT EXISTS farm_input_logs (
     farmer_account_id INTEGER NOT NULL,
     farmer_pledge_id INTEGER,
     input_type TEXT NOT NULL,
+    product_name TEXT,
+    brand_name TEXT,
+    application_method TEXT,
     quantity REAL NOT NULL,
     unit TEXT NOT NULL,
     log_date TEXT NOT NULL,
@@ -94,6 +99,37 @@ CREATE TABLE IF NOT EXISTS farm_input_logs (
 );
 """
 
+REQUIRED_FARMER_ACCOUNT_COLUMNS = {
+    "latitude": "ALTER TABLE farmer_accounts ADD COLUMN latitude REAL",
+    "longitude": "ALTER TABLE farmer_accounts ADD COLUMN longitude REAL",
+}
+
+REQUIRED_FARM_INPUT_LOG_COLUMNS = {
+    "product_name": "ALTER TABLE farm_input_logs ADD COLUMN product_name TEXT",
+    "brand_name": "ALTER TABLE farm_input_logs ADD COLUMN brand_name TEXT",
+    "application_method": "ALTER TABLE farm_input_logs ADD COLUMN application_method TEXT",
+}
+
+
+def ensure_schema_columns(connection: sqlite3.Connection) -> None:
+    """Add newly required columns to existing tables without dropping data."""
+    farmer_account_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(farmer_accounts)").fetchall()
+    }
+    farm_input_log_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(farm_input_logs)").fetchall()
+    }
+
+    for column_name, alter_statement in REQUIRED_FARMER_ACCOUNT_COLUMNS.items():
+        if column_name not in farmer_account_columns:
+            connection.execute(alter_statement)
+
+    for column_name, alter_statement in REQUIRED_FARM_INPUT_LOG_COLUMNS.items():
+        if column_name not in farm_input_log_columns:
+            connection.execute(alter_statement)
+
 
 def initialise_database(database_path: Path = DATABASE_PATH) -> Path:
     """Create the database file and ensure all tables exist."""
@@ -102,6 +138,7 @@ def initialise_database(database_path: Path = DATABASE_PATH) -> Path:
     with sqlite3.connect(database_path) as connection:
         connection.execute("PRAGMA foreign_keys = ON;")
         connection.executescript(SCHEMA_SQL)
+        ensure_schema_columns(connection)
         connection.commit()
 
     return database_path

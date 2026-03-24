@@ -3,35 +3,144 @@
 {% block title %}Buyer Pledges | Agri Platform{% endblock %}
 
 {% block content %}
-<section>
+<section class="page-header">
     <h1>Buyer Pledges</h1>
-    {% if pledges %}
-    <table>
-        <thead>
-            <tr>
-                <th>Buyer</th>
-                <th>Crop</th>
-                <th>Quantity (kg)</th>
-                <th>Target Price</th>
-                <th>Needed By</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pledge in pledges %}
-            <tr>
-                <td>{{ pledge.organisation_name }}</td>
-                <td>{{ pledge.crop_type }}</td>
-                <td>{{ pledge.quantity_kg }}</td>
-                <td>{{ pledge.target_price_per_kg }}</td>
-                <td>{{ pledge.needed_by_date }}</td>
-                <td>{{ pledge.pledge_status }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <p class="lede">
+        Review demand, spot what needs attention, and drill into the next coordination step only when you need more detail.
+    </p>
+</section>
+
+<section class="management-section">
+    <div class="section-heading">
+        <h2>Open Demand</h2>
+        <p>Requests with no committed supply yet.</p>
+    </div>
+    {% if open_pledges %}
+    <div class="management-grid">
+        {% for pledge in open_pledges %}
+        <article class="management-card management-card--compact">
+            <div class="management-card__header">
+                <div>
+                    <h3>{{ pledge.organisation_name }}</h3>
+                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
+                </div>
+                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
+            </div>
+            <dl class="management-meta management-meta--compact">
+                <div>
+                    <dt>Quantity</dt>
+                    <dd>{{ pledge.quantity_kg }} kg</dd>
+                </div>
+                <div>
+                    <dt>Deadline</dt>
+                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
+                </div>
+                <div>
+                    <dt>Price</dt>
+                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
+                </div>
+            </dl>
+            <p class="management-notes">{{ pledge.criteria_summary }}</p>
+        </article>
+        {% endfor %}
+    </div>
     {% else %}
-    <p>No buyer pledges are available.</p>
+    <p class="empty-state">No open buyer pledges are available right now.</p>
+    {% endif %}
+</section>
+
+<section class="management-section">
+    <div class="section-heading">
+        <h2>Partially Fulfilled</h2>
+        <p>Requests that have some committed supply but still require attention.</p>
+    </div>
+    {% if partial_pledges %}
+    <div class="management-grid">
+        {% for pledge in partial_pledges %}
+        <article class="management-card management-card--compact">
+            <div class="management-card__header">
+                <div>
+                    <h3>{{ pledge.organisation_name }}</h3>
+                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
+                </div>
+                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
+            </div>
+            <div class="progress-block">
+                <div class="progress-block__labels">
+                    <span>{{ pledge.fulfillment_percent }}% fulfilled</span>
+                    <span>{{ pledge.remaining_quantity_kg }} kg left</span>
+                </div>
+                <div class="progress-track" aria-label="Fulfilment progress">
+                    <span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%;"></span>
+                </div>
+            </div>
+            <dl class="management-meta management-meta--compact">
+                <div>
+                    <dt>Quantity</dt>
+                    <dd>{{ pledge.quantity_kg }} kg</dd>
+                </div>
+                <div>
+                    <dt>Allocated</dt>
+                    <dd>{{ pledge.allocated_quantity_kg }} kg</dd>
+                </div>
+                <div>
+                    <dt>Deadline</dt>
+                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
+                </div>
+                <div>
+                    <dt>Price</dt>
+                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
+                </div>
+            </dl>
+            <p class="management-notes">{{ pledge.criteria_summary }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No partially fulfilled buyer pledges are available right now.</p>
+    {% endif %}
+</section>
+
+<section class="management-section">
+    <div class="section-heading">
+        <h2>Fulfilled</h2>
+        <p>Requests that have already reached their required quantity.</p>
+    </div>
+    {% if fulfilled_pledges %}
+    <div class="management-grid">
+        {% for pledge in fulfilled_pledges %}
+        <article class="management-card management-card--compact">
+            <div class="management-card__header">
+                <div>
+                    <h3>{{ pledge.organisation_name }}</h3>
+                    <p class="management-card__crop">{{ pledge.crop_type }}</p>
+                </div>
+                <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.pledge_status|title }}</span>
+            </div>
+            <dl class="management-meta management-meta--compact">
+                <div>
+                    <dt>Quantity</dt>
+                    <dd>{{ pledge.quantity_kg }} kg</dd>
+                </div>
+                <div>
+                    <dt>Allocated</dt>
+                    <dd>{{ pledge.allocated_quantity_kg }} kg</dd>
+                </div>
+                <div>
+                    <dt>Deadline</dt>
+                    <dd>{{ pledge.needed_by_date or "No deadline set" }}</dd>
+                </div>
+                <div>
+                    <dt>Price</dt>
+                    <dd>{{ pledge.target_price_per_kg if pledge.target_price_per_kg is not none else "TBC" }}</dd>
+                </div>
+            </dl>
+            <p class="management-notes">{{ pledge.criteria_summary }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No fulfilled buyer pledges are available right now.</p>
     {% endif %}
 </section>
 {% endblock %}

@@ -3,11 +3,14 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.5;
+    background: #f7f5ee;
+    color: #203126;
 }
 
 nav {
-    background: #f0f0f0;
-    padding: 1rem;
+    background: #e3ecd9;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #c8d5bc;
 }
 
 nav a {
@@ -18,11 +21,14 @@ nav a {
 
 main {
     padding: 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
 }
 
 table {
     border-collapse: collapse;
     width: 100%;
+    background: #ffffff;
 }
 
 th,
@@ -30,4 +36,388 @@ td {
     border: 1px solid #cccccc;
     padding: 0.5rem;
     text-align: left;
+}
+
+a {
+    color: #1f4d2e;
+}
+
+.page-header {
+    margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.lede {
+    max-width: 60rem;
+    color: #4b5d50;
+}
+
+.farm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.filter-panel {
+    margin-bottom: 1rem;
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr)) auto;
+    gap: 0.75rem;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    padding: 0.9rem;
+}
+
+.filter-form input,
+.filter-form select,
+.filter-form button {
+    font: inherit;
+    border-radius: 10px;
+}
+
+.filter-form input,
+.filter-form select {
+    padding: 0.7rem 0.8rem;
+    border: 1px solid #ccd5c4;
+    background: #fbfcf8;
+    color: #203126;
+}
+
+.filter-form button {
+    padding: 0.72rem 1rem;
+    border: 1px solid #294933;
+    background: #294933;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    background: #ffffff;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.directory-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.directory-table th {
+    background: #f0f4eb;
+    border-bottom: 1px solid #d8dfcf;
+    color: #506052;
+    font-size: 0.85rem;
+    letter-spacing: 0.01em;
+}
+
+.directory-table td,
+.directory-table th {
+    border-left: none;
+    border-right: none;
+    padding: 0.8rem 0.9rem;
+    vertical-align: top;
+}
+
+.directory-table tbody tr:hover {
+    background: #fafcf7;
+}
+
+.table-subtle {
+    margin-top: 0.15rem;
+    font-size: 0.9rem;
+    color: #667864;
+}
+
+.management-section {
+    margin-bottom: 2rem;
+}
+
+.section-heading {
+    margin-bottom: 0.75rem;
+}
+
+.section-heading h2 {
+    margin: 0 0 0.25rem;
+}
+
+.section-heading p {
+    margin: 0;
+    color: #5c6b60;
+}
+
+.management-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.management-card {
+    background: #ffffff;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.management-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.management-card__header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.management-label {
+    margin: 0 0 0.15rem;
+    font-size: 0.8rem;
+    color: #667864;
+}
+
+.management-card__crop {
+    margin: 0.2rem 0 0;
+    font-weight: 600;
+    color: #5d705f;
+}
+
+.management-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+}
+
+.management-meta dt {
+    font-size: 0.85rem;
+    color: #667864;
+}
+
+.management-meta dd {
+    margin: 0.2rem 0 0;
+    font-weight: 700;
+}
+
+.management-card--compact {
+    padding: 1rem 1rem 0.9rem;
+}
+
+.management-meta--compact {
+    margin-bottom: 0.8rem;
+}
+
+.management-notes {
+    margin: 0;
+    color: #4f6053;
+    font-size: 0.95rem;
+}
+
+.status-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid #c7d3bd;
+    background: #eef4e6;
+    color: #2b4332;
+}
+
+.status-pill--open {
+    background: #f5f0d7;
+    border-color: #e4d597;
+    color: #725b13;
+}
+
+.status-pill--partial {
+    background: #e4efe9;
+    border-color: #bfd5c6;
+    color: #285241;
+}
+
+.status-pill--fulfilled {
+    background: #deebe0;
+    border-color: #bfd3c1;
+    color: #1f4d2e;
+}
+
+.empty-state {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed #c8d5bc;
+    border-radius: 12px;
+    background: #fafcf7;
+    color: #5c6b60;
+}
+
+.progress-block {
+    margin: 0.2rem 0 0.9rem;
+}
+
+.progress-block__labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    color: #5c6b60;
+}
+
+.progress-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e7ece3;
+    overflow: hidden;
+}
+
+.progress-bar {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #5d8a62 0%, #2f5f43 100%);
+}
+
+.farm-card,
+.info-card,
+.stat-card {
+    background: #ffffff;
+    border: 1px solid #d8dfcf;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.farm-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.farm-card__header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.farm-card__owner,
+.farm-card__location {
+    margin: 0.25rem 0 0.75rem;
+    color: #55685a;
+}
+
+.farm-card__stats--compact {
+    margin-bottom: 0.8rem;
+}
+
+.farm-card__stats,
+.meta-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+}
+
+.farm-card__stats dt,
+.meta-list dt,
+.stat-label {
+    font-size: 0.85rem;
+    color: #667864;
+}
+
+.farm-card__stats dd,
+.meta-list dd,
+.stat-value {
+    margin: 0.2rem 0 0;
+    font-weight: 700;
+}
+
+.pill {
+    display: inline-block;
+    background: #eef4e6;
+    border: 1px solid #d5e0c8;
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.text-link {
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.map-card {
+    display: grid;
+    gap: 1rem;
+}
+
+.map-canvas {
+    position: relative;
+    min-height: 220px;
+    border-radius: 16px;
+    border: 1px solid #d6dfce;
+    background: #dcebd6;
+    overflow: hidden;
+}
+
+.map-meta {
+    margin-bottom: 0;
+}
+
+.map-fallback {
+    margin: 0;
+    padding: 1rem;
+    color: #4f6053;
+}
+
+.stats-grid,
+.detail-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.detail-grid {
+    grid-template-columns: 1fr 2fr;
+}
+
+.info-card h2 {
+    margin-top: 0;
+}
+
+@media (max-width: 720px) {
+    .filter-form {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .farm-card__stats,
+    .meta-list,
+    .management-meta {
+        grid-template-columns: 1fr;
+    }
 }

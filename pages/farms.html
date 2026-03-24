@@ -3,21 +3,82 @@
 {% block title %}Farm Directory | Agri Platform{% endblock %}
 
 {% block content %}
-<section>
+<section class="page-header">
     <h1>Farm Directory</h1>
+    <p class="lede">Scan farms quickly here, then open the profile page when you need pledge-level production and input details.</p>
+</section>
+
+<section class="filter-panel">
+    <form class="filter-form" method="get" action="{{ url_for('farms') }}">
+        <input
+            type="text"
+            name="q"
+            value="{{ search_term }}"
+            placeholder="Search farm, farmer, county, or region"
+        >
+        <select name="crop">
+            <option value="">All crops</option>
+            {% for crop in crop_options %}
+            <option value="{{ crop }}" {% if crop_filter == crop %}selected{% endif %}>{{ crop }}</option>
+            {% endfor %}
+        </select>
+        <select name="availability">
+            <option value="" {% if availability_filter == "" %}selected{% endif %}>Any availability</option>
+            <option value="has_offers" {% if availability_filter == "has_offers" %}selected{% endif %}>Has active offers</option>
+            <option value="soon" {% if availability_filter == "soon" %}selected{% endif %}>Available soon</option>
+        </select>
+        <select name="sort">
+            <option value="priority" {% if sort_by == "priority" %}selected{% endif %}>Best match first</option>
+            <option value="supply" {% if sort_by == "supply" %}selected{% endif %}>Highest supply</option>
+            <option value="next" {% if sort_by == "next" %}selected{% endif %}>Next availability</option>
+            <option value="offers" {% if sort_by == "offers" %}selected{% endif %}>Most offers</option>
+            <option value="name" {% if sort_by == "name" %}selected{% endif %}>Farm name</option>
+        </select>
+        <button type="submit">Apply</button>
+    </form>
+</section>
+
+<section>
     {% if farms %}
-    <ul>
-        {% for farm in farms %}
-        <li>
-            <strong>{{ farm.farm_name }}</strong> - {{ farm.farmer_name }}
-            {% if farm.county or farm.region %}
-            ({{ farm.county }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region }})
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="table-wrap">
+        <table class="directory-table">
+            <thead>
+                <tr>
+                    <th>Farm</th>
+                    <th>Location</th>
+                    <th>Offers</th>
+                    <th>Crops</th>
+                    <th>Listed Supply</th>
+                    <th>Next Availability</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for farm in farms %}
+                <tr>
+                    <td>
+                        <strong>{{ farm.farm_name }}</strong>
+                        <div class="table-subtle">{{ farm.farmer_name }}</div>
+                    </td>
+                    <td>{{ farm.county or "County not provided" }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region or "Region not provided" }}</td>
+                    <td>{{ farm.pledge_count }}</td>
+                    <td>
+                        {% if farm.crop_types %}
+                        {{ farm.crop_types|join(", ") }}
+                        {% else %}
+                        No active crops
+                        {% endif %}
+                    </td>
+                    <td>{{ farm.total_supply_kg }} kg</td>
+                    <td>{{ farm.next_available_date or "TBC" }}</td>
+                    <td><a class="text-link" href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">View profile</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-    <p>No farms are available.</p>
+    <p class="empty-state">No farms match the current filters.</p>
     {% endif %}
 </section>
 {% endblock %}

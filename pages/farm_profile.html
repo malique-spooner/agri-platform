@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Farm Profile | Agri Platform{% endblock %}
+{% block extra_head %}
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <p class="eyebrow"><a href="{{ url_for('farms') }}">Farm Directory</a></p>
+    <h1>{{ farm.farm_name }}</h1>
+    <p class="lede">
+        Managed by {{ farm.farmer_name }}
+        {% if farm.county or farm.region %}
+        in {{ farm.county }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region }}
+        {% endif %}.
+    </p>
+</section>
+
+<section class="stats-grid">
+    <article class="stat-card">
+        <p class="stat-label">Farm Size</p>
+        <p class="stat-value">{{ farm.total_hectares }} ha</p>
+    </article>
+    <article class="stat-card">
+        <p class="stat-label">Active Pledges</p>
+        <p class="stat-value">{{ farm.pledge_count }}</p>
+    </article>
+    <article class="stat-card">
+        <p class="stat-label">Crop Types</p>
+        <p class="stat-value">{{ farm.crop_count }}</p>
+    </article>
+    <article class="stat-card">
+        <p class="stat-label">Listed Supply</p>
+        <p class="stat-value">{{ farm.total_supply_kg }} kg</p>
+    </article>
+</section>
+
+<section class="detail-grid">
+    <article class="info-card">
+        <h2>Contact</h2>
+        <dl class="meta-list">
+            <div>
+                <dt>Farmer</dt>
+                <dd>{{ farm.farmer_name }}</dd>
+            </div>
+            <div>
+                <dt>Email</dt>
+                <dd>{{ farm.email or "Not provided" }}</dd>
+            </div>
+            <div>
+                <dt>Phone</dt>
+                <dd>{{ farm.phone or "Not provided" }}</dd>
+            </div>
+            <div>
+                <dt>Next Availability</dt>
+                <dd>{{ farm.next_available_date or "No dated supply listed" }}</dd>
+            </div>
+        </dl>
+    </article>
+
+    <article class="info-card">
+        <h2>Location</h2>
+        <div class="map-card">
+            <div
+                id="farm-map"
+                class="map-canvas"
+                data-latitude="{{ farm.latitude if farm.latitude is not none else '' }}"
+                data-longitude="{{ farm.longitude if farm.longitude is not none else '' }}"
+                data-farm-name="{{ farm.farm_name }}"
+                aria-label="Farm location map"
+            ></div>
+            <dl class="meta-list map-meta">
+                <div>
+                    <dt>Latitude</dt>
+                    <dd>{{ "%.5f"|format(farm.latitude) if farm.latitude is not none else "Not recorded" }}</dd>
+                </div>
+                <div>
+                    <dt>Longitude</dt>
+                    <dd>{{ "%.5f"|format(farm.longitude) if farm.longitude is not none else "Not recorded" }}</dd>
+                </div>
+            </dl>
+        </div>
+    </article>
+
+    <article class="info-card">
+        <h2>Production Pledges</h2>
+        {% if pledges %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Crop</th>
+                    <th>Quantity (kg)</th>
+                    <th>Asking Price</th>
+                    <th>Available From</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pledge in pledges %}
+                <tr>
+                    <td>{{ pledge.crop_type }}</td>
+                    <td>{{ pledge.quantity_kg }}</td>
+                    <td>{{ pledge.asking_price_per_kg if pledge.asking_price_per_kg is not none else "TBC" }}</td>
+                    <td>{{ pledge.available_from_date or "TBC" }}</td>
+                    <td>{{ pledge.pledge_status }}</td>
+                    <td><a class="text-link" href="{{ url_for('farm_pledge_detail', farm_id=farm.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">View crop details</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No production pledges are currently listed for this farm.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}
+{% block extra_scripts %}
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const mapElement = document.getElementById("farm-map");
+    if (!mapElement || typeof L === "undefined") {
+        return;
+    }
+
+    const latitude = Number(mapElement.dataset.latitude);
+    const longitude = Number(mapElement.dataset.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        mapElement.innerHTML = "<p class=\"map-fallback\">Coordinates are not available for this farm.</p>";
+        return;
+    }
+
+    const map = L.map(mapElement, {
+        scrollWheelZoom: false,
+    }).setView([latitude, longitude], 7);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup(mapElement.dataset.farmName || "Farm location")
+        .openPopup();
+});
+</script>
+{% endblock %}

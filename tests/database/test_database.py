@@ -5,6 +5,36 @@ import sqlite3
 
 from logic.database_helpers import get_all_buyer_pledges, get_all_farms
 
+SUPPORTED_AFRICAN_COUNTRIES = {
+    "Kenya",
+    "Tanzania",
+    "Uganda",
+    "Rwanda",
+    "Malawi",
+    "Zambia",
+    "Zimbabwe",
+}
+
+COUNTRY_COORDINATE_RANGES = {
+    "Kenya": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
+    "Tanzania": {"lat": (-11.75, -0.98), "lon": (29.34, 40.44)},
+    "Uganda": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
+    "Rwanda": {"lat": (-2.84, -1.05), "lon": (28.86, 30.90)},
+    "Malawi": {"lat": (-17.13, -9.37), "lon": (32.67, 35.92)},
+    "Zambia": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
+    "Zimbabwe": {"lat": (-22.43, -15.61), "lon": (25.24, 33.06)},
+}
+
+COUNTRY_COUNTIES = {
+    "Kenya": {"Nakuru", "Kiambu", "Meru", "Machakos"},
+    "Tanzania": {"Arusha", "Morogoro", "Mbeya", "Dodoma"},
+    "Uganda": {"Wakiso", "Mbarara", "Gulu", "Mbale"},
+    "Rwanda": {"Eastern Province", "Northern Province", "Southern Province"},
+    "Malawi": {"Lilongwe", "Mzuzu", "Blantyre", "Zomba"},
+    "Zambia": {"Lusaka", "Central", "Copperbelt", "Eastern"},
+    "Zimbabwe": {"Mashonaland East", "Midlands", "Manicaland", "Masvingo"},
+}
+
 
 EXPECTED_TABLES = {
     "buyer_accounts",
@@ -178,6 +208,24 @@ def test_generated_data_contains_optional_null_fields(test_database_path):
     assert input_log_pledge_nulls > 0
 
 
+def test_generated_farm_coordinates_are_in_supported_african_countries(test_database_path):
+    """Generated farms should belong to supported African countries and valid coordinate ranges."""
+    with sqlite3.connect(test_database_path) as connection:
+        rows = connection.execute(
+            "SELECT region, county, latitude, longitude FROM farmer_accounts"
+        ).fetchall()
+
+    assert rows
+    for region, county, latitude, longitude in rows:
+        assert region in SUPPORTED_AFRICAN_COUNTRIES
+        assert county in COUNTRY_COUNTIES[region]
+        assert latitude is not None
+        assert longitude is not None
+        bounds = COUNTRY_COORDINATE_RANGES[region]
+        assert bounds["lat"][0] <= latitude <= bounds["lat"][1]
+        assert bounds["lon"][0] <= longitude <= bounds["lon"][1]
+
+
 def test_buyer_pledge_notes_are_valid_json(test_database_path):
     """Buyer pledge notes should contain valid JSON strings."""
     with sqlite3.connect(test_database_path) as connection:
@@ -232,3 +280,51 @@ def test_input_logs_reference_matching_farmer_when_pledge_is_present(test_databa
         ).fetchone()[0]
 
     assert invalid_count == 0
+
+
+def test_generated_dataset_contains_dense_crop_input_history(test_database_path):
+    """Most farmer pledges should have multiple linked logs so crop pages are informative."""
+    with sqlite3.connect(test_database_path) as connection:
+        linked_log_count = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE farmer_pledge_id IS NOT NULL"
+        ).fetchone()[0]
+        pledge_count = connection.execute(
+            "SELECT COUNT(*) FROM farmer_pledges"
+        ).fetchone()[0]
+        pledges_with_multiple_logs = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM (
+                SELECT farmer_pledge_id
+                FROM farm_input_logs
+                WHERE farmer_pledge_id IS NOT NULL
+                GROUP BY farmer_pledge_id
+                HAVING COUNT(*) >= 2
+            )
+            """
+        ).fetchone()[0]
+
+    assert linked_log_count > pledge_count
+    assert pledges_with_multiple_logs > max(1, pledge_count // 2)
+
+
+def test_input_logs_include_specific_product_and_method_details(test_database_path):
+    """Input logs should support future buyer-rule matching with specific product metadata."""
+    with sqlite3.connect(test_database_path) as connection:
+        missing_product_names = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE product_name IS NULL OR TRIM(product_name) = ''"
+        ).fetchone()[0]
+        missing_methods = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE application_method IS NULL OR TRIM(application_method) = ''"
+        ).fetchone()[0]
+        branded_logs = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE brand_name IS NOT NULL AND TRIM(brand_name) != ''"
+        ).fetchone()[0]
+        category_count = connection.execute(
+            "SELECT COUNT(DISTINCT input_type) FROM farm_input_logs"
+        ).fetchone()[0]
+
+    assert missing_product_names == 0
+    assert missing_methods == 0
+    assert branded_logs > 0
+    assert category_count >= 4

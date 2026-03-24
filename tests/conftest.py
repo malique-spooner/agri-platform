@@ -24,7 +24,7 @@ def build_test_database(database_path: Path) -> None:
             farmers=12,
             max_buyer_pledges=3,
             max_farmer_pledges=4,
-            max_input_logs=2,
+            max_input_logs=8,
             seed=20260324,
             database_path=database_path,
         )
