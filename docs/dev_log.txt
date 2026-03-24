@@ -1,0 +1,171 @@
+Date:
+2026-03-24
+
+Task:
+Reworked the database setup, synthetic data generation, and database-focused testing into a single consolidated database workflow.
+
+What changed:
+Moved the database setup and synthetic data generation scripts into the `database` folder so the schema, generated database file, and generation utilities now live in one place. Removed the old split between `setup/` and `database/`, deleted the fixed `sample_data.sql` file, and removed the separate `create_tables.sql` file by embedding the schema directly in `database/setup_database.py`.
+
+The generated test database is now built from the synthetic data generator rather than from a small static SQL seed file. This means the tests exercise the same setup and generation path used by the application database.
+
+The test structure was also reorganised into grouped folders under `tests/`, and the template folder was renamed to `pages` with Flask updated to load templates from that directory.
+
+Database testing was expanded significantly. The suite now checks:
+- table creation,
+- foreign key integrity,
+- positive quantity rules,
+- allocation totals relative to buyer demand,
+- allocation totals relative to farmer supply,
+- buyer pledge status correctness,
+- presence of open, partial, and fulfilled pledge states,
+- NULL coverage for optional fields,
+- JSON validity in generated buyer notes,
+- temporal consistency for pledge dates,
+- and input log consistency with farmer/pledge relationships.
+
+Why this was done:
+The earlier structure contained redundant database assets spread across multiple places: SQL schema files, sample data files, setup scripts, and generated data paths. That made the project harder to understand and maintain. Consolidating the database workflow into one folder reduces duplication and makes it clearer how the prototype database is created, populated, and validated.
+
+Design reasoning:
+The schema is now defined in Python because the SQL file had become a single-purpose dependency only used by setup. Removing that external file simplified the project structure without changing database behaviour.
+
+Using generated data for tests instead of a tiny fixed sample makes the database tests more representative of real usage. It also keeps the test path aligned with the actual data-generation workflow, which improves confidence that the setup and validation logic are working together correctly.
+
+Problems encountered:
+During consolidation, moving the setup script caused a temporary path collision and left `database/setup_database.py` missing. This was corrected by restoring the file directly in the target location and re-validating the workflow.
+
+Solution applied:
+Restored the setup script in `database/`, updated the generator to import from the new path, removed the obsolete `setup/` folder, and updated the README commands to match the new structure.
+
+Testing performed:
+Ran:
+- `./venv/bin/python database/setup_database.py`
+- `./venv/bin/python database/generate_data.py --buyers 8 --farmers 12 --max-buyer-pledges 3 --max-farmer-pledges 4 --max-input-logs 2 --seed 20260324`
+- `./venv/bin/python -m pytest tests/database/test_database.py -q`
+- `./venv/bin/python -m pytest -q`
+
+Results:
+- database setup succeeded,
+- synthetic generation completed with zero anomalies,
+- database test file passed with 13 tests,
+- full test suite passed with 17 tests.
+
+Reflection:
+This change made the database layer more coherent and much easier to explain. The project now has a single database workflow: define schema, create database, generate realistic synthetic records, validate the result, and test against that same generation path. That is a stronger engineering foundation than maintaining separate schema files, sample data files, and one-off setup scripts that drift apart over time.
+
+Date:
+2026-03-24
+
+Task:
+Reviewed the starred placeholder files individually and restored them to normal filenames.
+
+What changed:
+Inspected each file that had previously been renamed to end with `**`, then renamed those files back to conventional source filenames. The reviewed files were:
+- `logic/allocation_logic.py`
+- `static/css/allocation.css`
+- `static/js/allocation.js`
+- `templates/allocation_summary.html`
+- `templates/build_allocation.html`
+- `templates/farm_profile.html`
+- `templates/reusable/allocation_table.html`
+
+Why this was done:
+The starred naming convention created confusion about the current application state and made it harder to reason about whether the Flask app was broken because of bad file naming. The immediate priority was to separate the question of file naming from the question of actual application behaviour.
+
+Design reasoning:
+The correct test for a placeholder in this project is not whether a file is incomplete, but whether it currently contributes anything to the running app. Each starred file was checked individually against the active Flask routes, imports, and template references. A file was treated as a true placeholder only if it had no current effect on the website or application flow.
+
+Findings:
+All reviewed starred files are true placeholders at the moment.
+- `logic/allocation_logic.py` contains only a placeholder module docstring and is not imported.
+- `static/css/allocation.css` is not linked from any active template.
+- `static/js/allocation.js` is not loaded by any active template and contains only a placeholder comment.
+- `templates/allocation_summary.html`, `templates/build_allocation.html`, and `templates/farm_profile.html` are not wired to any route and only render “later version” content.
+- `templates/reusable/allocation_table.html` is not included anywhere in the active template tree and only contains placeholder markup.
+
+Problem encountered:
+The earlier rename was visually explicit, but it introduced non-standard filenames that were more likely to distract from the actual issue than clarify it. In practice, the starred names did not identify a bug in the running app because these files were already unused.
+
+Solution applied:
+Restored normal filenames and documented the placeholder status in the development log instead of encoding that status into unusual file names. This keeps the codebase easier to work with while preserving traceability about which files are scaffolding only.
+
+Testing performed:
+Searched the repository for references to each reviewed file before renaming. The only references found were in the development log itself, confirming that the files do not currently participate in the active application.
+
+Reflection:
+This check clarified an important distinction: an incomplete file is not necessarily a placeholder, and a placeholder file is not necessarily the cause of application issues. The better approach is to assess whether a file is actually connected to the live route/template/import path before treating it as part of the current product surface.
+
+Date:
+2026-03-24
+
+Task:
+Renamed all placeholder implementation files so their filenames end with `**`.
+
+What changed:
+Renamed the current placeholder allocation-related files in the templates, static assets, and logic layer so that each filename now explicitly ends with `**`. This affected the placeholder allocation templates, the placeholder farm profile template, the reusable allocation table placeholder, the placeholder allocation JavaScript and CSS files, and the placeholder allocation logic module.
+
+Why this was done:
+This change was made to clearly mark files that are present in the repository as scaffolding rather than completed features. The aim was to make placeholder assets visually distinct from active implementation files during ongoing development.
+
+Design reasoning:
+Because these files are not part of the currently wired application flow, renaming them does not affect the live routes. Explicitly marking them in their filenames makes their status obvious when scanning the project structure and reduces the chance that unfinished files are mistaken for completed functionality.
+
+Files affected:
+- `templates/build_allocation.html**`
+- `templates/allocation_summary.html**`
+- `templates/farm_profile.html**`
+- `templates/reusable/allocation_table.html**`
+- `static/js/allocation.js**`
+- `static/css/allocation.css**`
+- `logic/allocation_logic.py**`
+
+Problem encountered:
+The requested naming convention is intentionally unusual for source files, particularly for template and Python module filenames. In a project with active imports or references to these paths, such a naming pattern could create tooling or usage friction.
+
+Solution applied:
+Applied the naming convention only to files that are currently placeholders and not wired into active routes or imports. This preserves the current application behaviour while satisfying the requirement to visibly mark placeholder files.
+
+Testing performed:
+Checked the repository for references to the renamed placeholder files before applying the change. No active references were found, so the rename did not require route, import, or asset-path updates.
+
+Reflection:
+This rename improves visual signalling in the repository, but it also introduces deliberately non-standard filenames. If these placeholder files are later promoted into active implementation, they should be renamed back to conventional source filenames as part of that feature work.
+
+Date:
+2026-03-24
+
+Task:
+Implemented a project-wide runtime logging system using Python's standard `logging` library.
+
+What changed:
+Added a shared logging configuration module in `logic/logging_config.py` and integrated it across the main Flask application, database helper functions, and the database setup workflow. The application now writes runtime logs to `logs/app.log` using a rotating file handler, while also sending log output to the console during development.
+
+Why this was done:
+The project needed a proper runtime logging system that was separate from the development log. The development log is for documenting implementation progress, technical reasoning, testing, and reflection. Runtime logging serves a different engineering purpose: it records application behaviour during execution so that requests, database access, setup operations, and future allocation workflows can be traced and debugged more effectively.
+
+Design reasoning:
+Python's built-in `logging` library was chosen because it is the standard and most widely used logging approach in Python applications. A shared configuration module was used so that logging behaviour is consistent across the project rather than being configured separately in multiple files. A rotating file handler was introduced to prevent the log file from growing indefinitely over time.
+
+Files affected:
+- `logic/logging_config.py`
+- `app.py`
+- `logic/database_helpers.py`
+- `setup/setup_database.py`
+- `README.md`
+- `.gitignore`
+
+Problem encountered:
+The initial integration caused `python setup/setup_database.py` to fail because the shared logging configuration module could not be imported when the script was executed directly from the `setup` directory context. This happened because the project root was not automatically available on `sys.path` in that execution mode.
+
+Solution applied:
+Updated the setup script so that the project root is inserted into `sys.path` before importing the shared logging configuration. This restored compatibility with the documented setup command and allowed the logging system to be reused in the setup workflow without duplicating configuration logic.
+
+Testing performed:
+Ran the automated test suite using `./venv/bin/python -m pytest -q`, which passed successfully with 6 tests passing. Also ran `./venv/bin/python setup/setup_database.py` to confirm that the database setup still worked after the logging integration. Verified that `logs/app.log` was created and contained application and database log entries.
+
+Changes to original plan:
+An earlier attempt briefly created a separate development log file outside `docs`, but this was corrected so that the project development log remained in the `docs` folder while runtime execution logs were moved into the dedicated `logs` directory.
+
+Reflection:
+This change improved the project structure by separating two forms of logging that serve different purposes. The development log remains useful for academic reporting and design justification, while the runtime logging system now provides a maintainable technical foundation for debugging and tracing future features such as allocation logic, supply aggregation, and database-driven coordination workflows.

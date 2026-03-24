@@ -1,6 +1,26 @@
+"""Create the SQLite database schema for the agricultural coordination platform."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+import sqlite3
+import sys
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATABASE_DIR = PROJECT_ROOT / "database"
+DATABASE_PATH = DATABASE_DIR / "app_data.db"
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from logic.logging_config import configure_logging
+
+
+logger = logging.getLogger(__name__)
+
+SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
 
--- Stores buyer organisations that can create purchasing pledges.
 CREATE TABLE IF NOT EXISTS buyer_accounts (
     buyer_account_id INTEGER PRIMARY KEY AUTOINCREMENT,
     organisation_name TEXT NOT NULL,
@@ -10,7 +30,6 @@ CREATE TABLE IF NOT EXISTS buyer_accounts (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Stores crop demand posted by buyer organisations.
 CREATE TABLE IF NOT EXISTS buyer_pledges (
     buyer_pledge_id INTEGER PRIMARY KEY AUTOINCREMENT,
     buyer_account_id INTEGER NOT NULL,
@@ -24,7 +43,6 @@ CREATE TABLE IF NOT EXISTS buyer_pledges (
     FOREIGN KEY (buyer_account_id) REFERENCES buyer_accounts (buyer_account_id)
 );
 
--- Stores farmer account and farm profile details.
 CREATE TABLE IF NOT EXISTS farmer_accounts (
     farmer_account_id INTEGER PRIMARY KEY AUTOINCREMENT,
     farm_name TEXT NOT NULL,
@@ -37,7 +55,6 @@ CREATE TABLE IF NOT EXISTS farmer_accounts (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Stores crop supply pledges offered by farmers.
 CREATE TABLE IF NOT EXISTS farmer_pledges (
     farmer_pledge_id INTEGER PRIMARY KEY AUTOINCREMENT,
     farmer_account_id INTEGER NOT NULL,
@@ -51,7 +68,6 @@ CREATE TABLE IF NOT EXISTS farmer_pledges (
     FOREIGN KEY (farmer_account_id) REFERENCES farmer_accounts (farmer_account_id)
 );
 
--- Links buyer pledges to one or more farmer pledges that help fulfill demand.
 CREATE TABLE IF NOT EXISTS pledge_allocations (
     allocation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     buyer_pledge_id INTEGER NOT NULL,
@@ -63,7 +79,6 @@ CREATE TABLE IF NOT EXISTS pledge_allocations (
     FOREIGN KEY (farmer_pledge_id) REFERENCES farmer_pledges (farmer_pledge_id)
 );
 
--- Stores farm input usage records for farmers and, when relevant, a specific farmer pledge.
 CREATE TABLE IF NOT EXISTS farm_input_logs (
     input_log_id INTEGER PRIMARY KEY AUTOINCREMENT,
     farmer_account_id INTEGER NOT NULL,
@@ -77,3 +92,29 @@ CREATE TABLE IF NOT EXISTS farm_input_logs (
     FOREIGN KEY (farmer_account_id) REFERENCES farmer_accounts (farmer_account_id),
     FOREIGN KEY (farmer_pledge_id) REFERENCES farmer_pledges (farmer_pledge_id)
 );
+"""
+
+
+def initialise_database(database_path: Path = DATABASE_PATH) -> Path:
+    """Create the database file and ensure all tables exist."""
+    DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys = ON;")
+        connection.executescript(SCHEMA_SQL)
+        connection.commit()
+
+    return database_path
+
+
+def main() -> None:
+    """Create the database schema and print the resulting path."""
+    log_path = configure_logging()
+    logger.info("Schema setup started; logging to %s", log_path)
+    database_path = initialise_database()
+    logger.info("Schema setup complete for %s", database_path)
+    print(f"Database schema ready: {database_path}")
+
+
+if __name__ == "__main__":
+    main()

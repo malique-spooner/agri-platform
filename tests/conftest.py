@@ -3,27 +3,32 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
+from types import SimpleNamespace
 import sys
 
 import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = PROJECT_ROOT / "database" / "create_tables.sql"
-SAMPLE_DATA_PATH = PROJECT_ROOT / "database" / "sample_data.sql"
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app import create_app
+from database.generate_data import generate_dataset
 
 
 def build_test_database(database_path: Path) -> None:
-    """Create a fresh SQLite test database from the project SQL files."""
-    with sqlite3.connect(database_path) as connection:
-        connection.execute("PRAGMA foreign_keys = ON;")
-        connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-        connection.executescript(SAMPLE_DATA_PATH.read_text(encoding="utf-8"))
-        connection.commit()
+    """Create a fresh SQLite test database using deterministic synthetic data."""
+    generate_dataset(
+        SimpleNamespace(
+            buyers=8,
+            farmers=12,
+            max_buyer_pledges=3,
+            max_farmer_pledges=4,
+            max_input_logs=2,
+            seed=20260324,
+            database_path=database_path,
+        )
+    )
 
 
 @pytest.fixture()

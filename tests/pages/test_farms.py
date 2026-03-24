@@ -7,4 +7,4 @@ def test_farms_page_returns_success(client):
 
     assert response.status_code == 200
     assert b"Farm Directory" in response.data
-    assert b"Sunrise Fields" in response.data
+    assert b"<ul>" in response.data

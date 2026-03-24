@@ -7,4 +7,4 @@ def test_buyer_pledges_page_returns_success(client):
 
     assert response.status_code == 200
     assert b"Buyer Pledges" in response.data
-    assert b"Green Basket Co-op" in response.data
+    assert b"<table>" in response.data

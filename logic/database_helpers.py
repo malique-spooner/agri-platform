@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 import sqlite3
@@ -10,16 +11,21 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATABASE_PATH = PROJECT_ROOT / "database" / "app_data.db"
+logger = logging.getLogger(__name__)
 
 
 def get_database_path() -> Path:
     """Return the configured database path, defaulting to the local demo database."""
-    return Path(os.environ.get("AGRI_PLATFORM_DB_PATH", DEFAULT_DATABASE_PATH))
+    database_path = Path(os.environ.get("AGRI_PLATFORM_DB_PATH", DEFAULT_DATABASE_PATH))
+    logger.debug("Resolved database path: %s", database_path)
+    return database_path
 
 
 def get_connection() -> sqlite3.Connection:
     """Create a SQLite connection configured to return rows by column name."""
-    connection = sqlite3.connect(get_database_path())
+    database_path = get_database_path()
+    logger.debug("Opening SQLite connection to %s", database_path)
+    connection = sqlite3.connect(database_path)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON;")
     return connection
@@ -32,6 +38,7 @@ def rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
 
 def get_all_buyer_pledges() -> list[dict[str, Any]]:
     """Return all buyer pledges with the buyer organisation name attached."""
+    logger.info("Fetching all buyer pledges")
     query = """
         SELECT
             bp.buyer_pledge_id,
@@ -51,11 +58,13 @@ def get_all_buyer_pledges() -> list[dict[str, Any]]:
     with get_connection() as connection:
         rows = connection.execute(query).fetchall()
 
+    logger.info("Fetched %s buyer pledge record(s)", len(rows))
     return rows_to_dicts(rows)
 
 
 def get_all_farms() -> list[dict[str, Any]]:
     """Return all farmer accounts for the farm directory."""
+    logger.info("Fetching all farm records")
     query = """
         SELECT
             farmer_account_id,
@@ -73,11 +82,13 @@ def get_all_farms() -> list[dict[str, Any]]:
     with get_connection() as connection:
         rows = connection.execute(query).fetchall()
 
+    logger.info("Fetched %s farm record(s)", len(rows))
     return rows_to_dicts(rows)
 
 
 def get_farm_by_id(farm_id: int) -> dict[str, Any] | None:
     """Return a single farm profile by its identifier."""
+    logger.info("Fetching farm profile for id=%s", farm_id)
     query = """
         SELECT
             farmer_account_id,
@@ -95,11 +106,16 @@ def get_farm_by_id(farm_id: int) -> dict[str, Any] | None:
     with get_connection() as connection:
         row = connection.execute(query, (farm_id,)).fetchone()
 
+    if row:
+        logger.info("Found farm profile for id=%s", farm_id)
+    else:
+        logger.warning("No farm profile found for id=%s", farm_id)
     return dict(row) if row else None
 
 
 def get_farmer_pledges_for_crop(crop_type: str) -> list[dict[str, Any]]:
     """Return farmer pledges that match a requested crop type."""
+    logger.info("Fetching farmer pledges for crop_type=%s", crop_type)
     query = """
         SELECT
             fp.farmer_pledge_id,
@@ -120,4 +136,9 @@ def get_farmer_pledges_for_crop(crop_type: str) -> list[dict[str, Any]]:
     with get_connection() as connection:
         rows = connection.execute(query, (crop_type,)).fetchall()
 
+    logger.info(
+        "Fetched %s farmer pledge record(s) for crop_type=%s",
+        len(rows),
+        crop_type,
+    )
     return rows_to_dicts(rows)

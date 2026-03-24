@@ -1,0 +1,227 @@
+Development Log Guidance
+========================
+
+1. Purpose of the Development Log
+--------------------------------
+
+A development log is an important part of a software project because it creates a structured record of how the system evolved over time. In this project, the platform is not a single isolated script. It is a database-driven coordination workflow involving buyer pledges, farmer pledges, allocation logic, and aggregation of supply. Because of that, implementation decisions have consequences across data modelling, backend logic, testing, and user-facing behaviour. A development log helps make those decisions visible.
+
+The log supports evaluation, reflection, and traceability. Evaluation is stronger when there is evidence of what was attempted, what worked, what failed, and what changed as the project developed. Reflection is more credible when it is based on entries written during development rather than reconstructed afterwards. Traceability matters because it allows someone reading the project to connect a feature or behaviour back to the technical reasoning that produced it.
+
+The development log also links implementation to design decisions. For example, if the allocation workflow aggregates supply from multiple farmers to meet a buyer pledge, the log should explain why that design was chosen, how it affects the schema, and how it supports the wider goal of coordinating agricultural supply efficiently.
+
+2. What Should Be Recorded
+--------------------------
+
+Tasks / Features Implemented
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+What to write:
+Record the specific feature, component, or task that was completed. State which part of the system was affected and what functional outcome was produced.
+
+Why it matters:
+This shows concrete progress and makes it possible to track how the platform moved from initial setup to a working coordination system.
+
+Short example entry:
+"Implemented a route to display buyer pledges from the SQLite database. This allowed the web interface to show current demand rather than using hard-coded sample content."
+
+Design Decisions
+~~~~~~~~~~~~~~~~
+
+What to write:
+Record important technical choices and the reasoning behind them. This may include decisions about schema design, route structure, allocation strategy, data retrieval patterns, or template organisation.
+
+Why it matters:
+A project should not only show what was built, but why it was built in that way. This is especially important when several valid approaches were possible.
+
+Short example entry:
+"Chose to store buyer pledges and farmer pledges in separate tables because they represent distinct actors and different lifecycle states, even though both describe crop commitments."
+
+Problems Encountered
+~~~~~~~~~~~~~~~~~~~~
+
+What to write:
+Describe technical issues, implementation obstacles, or design uncertainties that affected progress. Be specific about where the problem appeared.
+
+Why it matters:
+Real software projects involve constraints and setbacks. Recording them demonstrates realistic development practice and provides evidence for later evaluation.
+
+Short example entry:
+"Initial allocation queries returned incorrect totals because the same farmer pledge could be counted multiple times when joining with proposed allocations."
+
+Solutions Applied
+~~~~~~~~~~~~~~~~~
+
+What to write:
+Explain how each significant problem was resolved. Include the technical change made and why that solution was appropriate.
+
+Why it matters:
+This shows problem-solving ability and helps connect debugging or redesign work to the final implementation.
+
+Short example entry:
+"Adjusted the allocation query to subtract already allocated quantities from available supply before matching new demand. This prevented over-allocation of the same farmer pledge."
+
+Changes to Original Plan
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+What to write:
+Record moments where the implementation diverged from the original intention, including scope reductions, sequencing changes, or revised architecture.
+
+Why it matters:
+Projects rarely follow the first plan exactly. Logging changes shows that design decisions were responsive to evidence rather than arbitrary.
+
+Short example entry:
+"Originally planned to build allocation pages before finalising the schema, but reversed the order so that the interface would be built against stable table relationships."
+
+Testing Performed
+~~~~~~~~~~~~~~~~~
+
+What to write:
+Record the tests written or executed, what they were intended to verify, and the result. Include both automated tests and important manual checks.
+
+Why it matters:
+Testing demonstrates that claims about correctness are supported by evidence.
+
+Short example entry:
+"Ran pytest after adding the buyer pledge route. The test confirmed a 200 response and verified that seeded buyer data appeared on the page."
+
+Reflections / Learning
+~~~~~~~~~~~~~~~~~~~~~~
+
+What to write:
+Record what was learned from the task, including technical insight, process improvement, or something that should be done differently next time.
+
+Why it matters:
+Reflection turns implementation history into evidence of software engineering thinking.
+
+Short example entry:
+"The schema needed to be more complete before frontend work could progress efficiently. Defining allocation relationships early reduced ambiguity in later route design."
+
+3. Level of Detail Expected
+---------------------------
+
+Entries should not be shallow. A weak entry would be something like: "Worked on the database" or "Improved allocation code." That kind of statement does not explain what changed, why it changed, or what effect it had on the system.
+
+An appropriate entry gives clear technical reasoning. For example: "Added a `pledge_allocations` table to support linking one buyer pledge to multiple farmer pledges. This was necessary because a single farm may not be able to satisfy total buyer demand alone."
+
+An excellent entry goes further by linking the decision to architecture and user needs. For example: "Introduced `pledge_allocations` as a separate linking table rather than storing allocation state directly on the pledge records. This preserves many-to-many flexibility, supports partial fulfilment across several farms, and reflects the practical requirement that buyer demand may need to be aggregated from multiple sources."
+
+In this project, strong entries should show not only what was coded, but how that decision supports the coordination workflow between demand and supply.
+
+4. Frequency of Entries
+-----------------------
+
+Entries should be written regularly, ideally once per meaningful development session or once per feature-level change. A meaningful session might include completing a route, restructuring the schema, implementing a query, adding allocation logic, or resolving a major bug.
+
+Consistent logging is better than writing everything at the end because retrospective notes are usually less accurate. Important reasoning is often forgotten after implementation is complete. Writing entries during development makes the record more reliable and produces better material for later reporting and evaluation.
+
+For this project, the best pattern is:
+- add an entry after each completed feature or major code change,
+- add an entry after solving a non-trivial problem,
+- add an entry when a design decision changes the original plan.
+
+5. Connection to the Report
+---------------------------
+
+The development log directly supports the final report.
+
+It supports the implementation section by providing a chronological record of what was built and in what order. This makes it easier to explain how the system progressed from schema design to routes, templates, and business logic.
+
+It supports the evaluation section by preserving evidence of problems encountered, tradeoffs made, and testing performed. That makes evaluation more persuasive because it is based on documented development activity rather than broad claims.
+
+It supports justification of technical decisions because each major design choice can be tied back to a written rationale. In this project, that includes decisions about database structure, how buyer and farmer pledges are represented, and how allocation logic should aggregate supply.
+
+6. Common Mistakes to Avoid
+---------------------------
+
+Avoid writing vague entries.
+Poor example: "Did more backend work."
+
+Avoid failing to explain decisions.
+Poor example: "Added a new table."
+Better approach: explain what the table represents, why it was needed, and how it supports the coordination workflow.
+
+Avoid recording only what was done without explaining why.
+Poor example: "Updated the route and changed the template."
+Better approach: explain what problem the update solved or what requirement it satisfied.
+
+Avoid ignoring problems or challenges.
+If a query failed, the schema needed revision, or the allocation logic was harder than expected, record that. Difficulties are useful evidence in both reflection and evaluation.
+
+Avoid writing the log as a list of disconnected tasks.
+The strongest entries connect implementation, reasoning, testing, and reflection in one short record.
+
+7. Example High-Quality Dev Log Entry
+-------------------------------------
+
+Date:
+2026-03-24
+
+Task:
+Implemented the initial database schema for buyer pledges, farmer pledges, and pledge allocations.
+
+What changed:
+Created SQLite tables for buyer accounts, buyer pledges, farmer accounts, farmer pledges, pledge allocations, and farm input logs. Added sample data so the application could be tested with realistic records representing both demand and available farm supply.
+
+Why this was done:
+The platform needs to coordinate buyer demand with supply offered by multiple farmers. A simple single-table design would not support the workflow properly because buyer demand and farmer supply are different entities with different states. A separate `pledge_allocations` table was introduced to represent the matching process between them.
+
+Design reasoning:
+The allocation table was designed as a linking structure because one buyer pledge may need produce from several farmers, and one farmer pledge may only partially satisfy total demand. This reflects the real coordination problem more accurately than storing a single direct relationship.
+
+Problem encountered:
+At the design stage, it was tempting to keep the schema minimal and only model buyer and farmer pledges. However, that would have made later allocation logic harder to implement and would have reduced traceability for partial fulfilment decisions.
+
+Solution applied:
+Included the allocation table from the start, even before the full allocation workflow was implemented in the web interface. This allowed later business logic to be built on a structure that already reflected the intended matching process.
+
+Testing performed:
+Verified that the database setup script created all expected tables and that seed data loaded correctly. Added tests to confirm the required tables existed and that the sample dataset could be read by helper functions.
+
+Reflection:
+This decision improved the architectural foundation of the project. Although it added complexity early, it reduced the likelihood of needing a disruptive schema redesign once allocation features are implemented. It also made the project’s core coordination workflow clearer and easier to justify in the report.
+
+Current Project Note
+--------------------
+
+This file is now the canonical development log guidance file for the repository. Future implementation work should append dated entries beneath this guidance so that the project maintains an ongoing record of changes, reasoning, testing, and reflection.
+
+Entry: 2026-03-24 14:00 (development log clarified and runtime logging separated)
+-------------------------------------------------------------------------------
+
+What changed:
+Clarified that `docs/dev_logs.txt` is the single development log document for the project and separated it conceptually from application runtime logging. Implemented a dedicated runtime logging system using Python's standard `logging` library so operational logs are not mixed with development reflections.
+
+Why this was done:
+The project needed to distinguish between two different forms of record-keeping. The development log is intended for documenting software engineering decisions, implementation reasoning, testing, and reflection. Runtime logging serves a different purpose: it captures application behaviour during execution for monitoring, debugging, and traceability.
+
+Design reasoning:
+Used Python's built-in `logging` library because it is the standard and most widely adopted logging approach in Python projects. Centralising configuration in one module improves consistency, avoids duplicated setup code, and makes it easier to extend logging behaviour later.
+
+Implementation detail:
+The runtime logging system was designed to:
+- write logs to a separate `logs` directory,
+- use a rotating file handler so log files do not grow without limit,
+- support console output during development,
+- and record events across the Flask application, database helper layer, and database setup workflow.
+
+Problem encountered:
+Earlier work temporarily created a separate `log/dev_logs.txt` file. That structure conflicted with the clarified requirement that the development log should live in `docs/dev_logs.txt`, while runtime logging should be a separate technical system.
+
+Solution applied:
+Removed the mistaken development log file from the `log` directory and introduced a proper runtime logging configuration instead. This restored a clear distinction between project documentation and executable system logging.
+
+Testing performed:
+The next validation step after implementation is to run the test suite and confirm that:
+- the Flask app still responds correctly,
+- database setup still completes successfully,
+- and runtime logs are written to the expected log file location.
+
+Verification result:
+The test suite passed after the logging integration, the database setup command completed successfully, and the runtime logger created `logs/app.log` as intended. The generated runtime log directory was then added to `.gitignore` so operational log files do not pollute version control.
+
+Reflection:
+This separation improves the maintainability of the project. It keeps the development log academically useful for reporting and evaluation, while giving the codebase a practical engineering logging system that supports debugging and operational visibility.
+
+Verification addendum:
+During validation, the automated test suite passed immediately, but the database setup script initially failed with a module import error when executed directly from the `setup` directory context. The cause was that the project root was not on `sys.path` for that execution mode. The fix was to insert the project root before importing the shared logging configuration module, so the setup command now works with the intended command shown in the README.

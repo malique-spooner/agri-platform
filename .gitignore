@@ -3,3 +3,4 @@ __pycache__/
 .env
 database/app_data.db
 .vscode/
+logs/
