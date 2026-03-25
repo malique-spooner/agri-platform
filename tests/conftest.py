@@ -22,7 +22,7 @@ def build_test_database(database_path: Path) -> None:
         SimpleNamespace(
             buyers=8,
             buyer_pledges_total=12,
-            farmers=12,
+            farmers=16,
             max_buyer_pledges=3,
             max_farmer_pledges=4,
             max_input_logs=8,

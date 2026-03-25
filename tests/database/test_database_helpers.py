@@ -73,7 +73,11 @@ def test_get_all_buyer_pledges_includes_display_and_progress_fields(test_databas
 
 def test_get_farmer_pledges_for_crop_only_returns_rows_with_remaining_supply(test_database_path):
     """Crop queries should exclude fully allocated farmer pledges."""
-    crop_type = get_all_buyer_pledges()[0]["crop_type"]
+    crop_type = next(
+        pledge["crop_type"]
+        for pledge in get_all_buyer_pledges()
+        if get_farmer_pledges_for_crop(str(pledge["crop_type"]))
+    )
     pledges = get_farmer_pledges_for_crop(crop_type)
 
     assert pledges

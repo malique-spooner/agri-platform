@@ -57,7 +57,7 @@ def test_generated_data_loads_correctly(test_database_path):
     farms = get_all_farms()
 
     assert buyer_pledges
-    assert len(farms) == 12
+    assert len(farms) == 16
 
 
 def test_input_catalog_is_seeded(test_database_path):
@@ -140,6 +140,24 @@ def test_allocations_never_exceed_farmer_supply(test_database_path):
         ).fetchone()[0]
 
     assert invalid_count == 0
+
+
+def test_generated_allocations_do_not_repeat_same_buyer_farmer_offer_pair(test_database_path):
+    """Synthetic data should not fragment one farm offer into repeated rows for the same buyer pledge."""
+    with sqlite3.connect(test_database_path) as connection:
+        duplicate_pair_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM (
+                SELECT buyer_pledge_id, farmer_pledge_id, COUNT(*) AS pair_count
+                FROM pledge_allocations
+                GROUP BY buyer_pledge_id, farmer_pledge_id
+                HAVING pair_count > 1
+            )
+            """
+        ).fetchone()[0]
+
+    assert duplicate_pair_count == 0
 
 
 def test_buyer_pledge_statuses_match_allocation_totals(test_database_path):

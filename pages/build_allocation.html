@@ -159,7 +159,7 @@
                 <input type="hidden" name="availability" value="{{ availability_filter }}">
                 <input type="hidden" name="rule" value="{{ rule_filter }}">
                 <input type="hidden" name="sort" value="{{ sort_by }}">
-                <button type="submit" class="secondary-button secondary-button--ghost">Export buyer summary</button>
+                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export buyer summary</button>
             </form>
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="export_farm_summary">
@@ -168,7 +168,7 @@
                 <input type="hidden" name="availability" value="{{ availability_filter }}">
                 <input type="hidden" name="rule" value="{{ rule_filter }}">
                 <input type="hidden" name="sort" value="{{ sort_by }}">
-                <button type="submit" class="secondary-button secondary-button--ghost">Export farm summary</button>
+                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export farm summary</button>
             </form>
         </div>
     </aside>

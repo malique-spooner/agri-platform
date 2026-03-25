@@ -1,12 +1,13 @@
 """Minimal Flask application for the agricultural coordination prototype."""
 
 from datetime import date, timedelta
+from io import BytesIO
 import logging
 import os
 from types import SimpleNamespace
 from typing import Any
 
-from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
 
 from database.generate_data import generate_dataset
 from logic.allocation_logic import (
@@ -31,6 +32,7 @@ from logic.database_helpers import (
     remove_input_catalog_entry,
 )
 from logic.logging_config import configure_logging
+from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
 
 
 configure_logging()
@@ -229,7 +231,7 @@ def filter_and_sort_allocation_offers(
         filtered = [pledge for pledge in filtered if str(pledge.get("criteria_status", "")) == rule_filter]
 
     if hide_ineligible:
-        filtered = [pledge for pledge in filtered if pledge.get("is_selectable", True)]
+        filtered = [pledge for pledge in filtered if str(pledge.get("criteria_status", "")) != "blocked"]
 
     return sorted(filtered, key=lambda pledge: allocation_offer_sort_key(pledge, sort_by))
 
@@ -312,8 +314,8 @@ def create_app() -> Flask:
             eligible_pledges=raw_eligible_pledges,
             logs_by_pledge_id=logs_by_pledge_id,
         )
-        hide_ineligible_arg = request.args.get("hide_ineligible", "").strip()
-        hide_ineligible = hide_ineligible_arg != "0"
+        hide_ineligible_values = [value.strip() for value in request.args.getlist("hide_ineligible")]
+        hide_ineligible = "1" in hide_ineligible_values or not hide_ineligible_values
         country_filter = request.args.get("country", "").strip()
         availability_filter = request.args.get("availability", "").strip()
         rule_filter = request.args.get("rule", "").strip()
@@ -328,14 +330,18 @@ def create_app() -> Flask:
             eligible_pledges=eligible_pledges,
             submitted_quantities=stored_quantities,
         )
+        can_export_reports = (
+            str(buyer_pledge.get("pledge_status", "")).lower() == "fulfilled"
+            or float(buyer_pledge.get("remaining_quantity_kg") or 0) <= 0
+        )
         submission_message = None
         if request.args.get("submitted") == "1":
             submission_message = "Allocation submitted."
 
         if request.method == "POST":
             action = request.form.get("action", "").strip()
-            post_hide_ineligible = request.form.get("hide_ineligible", "").strip() == "1"
-            hide_ineligible = post_hide_ineligible
+            post_hide_ineligible_values = [value.strip() for value in request.form.getlist("hide_ineligible")]
+            hide_ineligible = "1" in post_hide_ineligible_values
             country_filter = request.form.get("country", "").strip()
             availability_filter = request.form.get("availability", "").strip()
             rule_filter = request.form.get("rule", "").strip()
@@ -438,8 +444,27 @@ def create_app() -> Flask:
                         pledge_id,
                     )
             elif action in {"export_buyer_summary", "export_farm_summary"}:
-                submission_message = "Export actions are shown here now and will be wired into real outputs next."
-                logger.info("Placeholder export action=%s triggered for buyer pledge id=%s", action, pledge_id)
+                if not can_export_reports:
+                    submission_message = "Complete the batch before exporting reports."
+                    logger.warning(
+                        "Rejected export action=%s for buyer pledge id=%s because batch is not complete",
+                        action,
+                        pledge_id,
+                    )
+                else:
+                    logger.info("Generating export action=%s for buyer pledge id=%s", action, pledge_id)
+                    if action == "export_buyer_summary":
+                        pdf_bytes = build_buyer_summary_pdf(pledge_id)
+                        filename = f"buyer-pledge-{pledge_id}-batch-summary.pdf"
+                    else:
+                        pdf_bytes = build_farmer_summary_pdf(pledge_id)
+                        filename = f"buyer-pledge-{pledge_id}-farmer-summary.pdf"
+                    return send_file(
+                        BytesIO(pdf_bytes),
+                        mimetype="application/pdf",
+                        as_attachment=True,
+                        download_name=filename,
+                    )
 
             session[draft_session_key] = stored_quantities
             draft_allocation = build_draft_allocation(
@@ -486,6 +511,7 @@ def create_app() -> Flask:
             sort_by=sort_by,
             country_options=country_options,
             submission_message=submission_message,
+            can_export_reports=can_export_reports,
             active_database_path=str(get_database_path()),
         )
 

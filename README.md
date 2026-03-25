@@ -10,6 +10,7 @@ The current prototype supports the aggregator workflow for:
 - browsing the farm directory
 - drilling into farm profiles and crop-offer detail pages
 - staging and submitting supply allocations against buyer demand
+- exporting buyer-batch and farmer-participation PDF reports from the allocation view
 
 ## Setup
 

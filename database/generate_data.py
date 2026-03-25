@@ -279,8 +279,8 @@ def build_buyer_criteria_payload(
         for record in catalog
         if str(record["input_category"]) != "Fungicide"
     ]
-    required_count = rng.choices([0, 1, 2], weights=[4, 4, 2], k=1)[0]
-    blocked_count = rng.choices([0, 1, 2], weights=[3, 5, 2], k=1)[0]
+    required_count = rng.choices([0, 1, 2], weights=[7, 3, 0], k=1)[0]
+    blocked_count = rng.choices([0, 1, 2], weights=[7, 2, 1], k=1)[0]
 
     required_inputs = []
     blocked_inputs = []
@@ -290,7 +290,7 @@ def build_buyer_criteria_payload(
             {
                 "input_type": record["input_category"],
                 "product_name": record["product_name"],
-                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.6 else None,
+                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.2 else None,
             }
         )
 
@@ -304,7 +304,7 @@ def build_buyer_criteria_payload(
             {
                 "input_type": record["input_category"],
                 "product_name": record["product_name"],
-                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.75 else None,
+                "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.3 else None,
             }
         )
 
@@ -768,9 +768,6 @@ def insert_allocations(
             remaining_target -= allocation_quantity
             buyer_allocated[int(buyer_pledge["buyer_pledge_id"])] += allocation_quantity
             farmer_allocated[farmer_pledge_id] += allocation_quantity
-
-            if remaining_supply[farmer_pledge_id] > 0:
-                candidate_pledges.append(farmer_pledge)
 
     for pledge in buyer_pledges:
         buyer_pledge_id = int(pledge["buyer_pledge_id"])

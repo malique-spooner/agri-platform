@@ -2,6 +2,112 @@ Date:
 2026-03-25
 
 Task:
+Completed a large refinement pass across the allocator-facing interface, the input-catalog/settings workflow, the PDF reporting system, and the synthetic data model used to demonstrate allocation behaviour.
+
+What changed:
+The buyer pledge homepage and allocation builder were refined substantially so the system feels more like a working operations interface rather than a prototype with raw tables. The buyer queue was tightened into a more compact management surface with a sticky selected-pledge panel, clearer status wording, and required/blocked buyer-rule sections that now use the same typography and hierarchy as the rest of the panel. Navigation labels were also aligned with the real page names so the interface is more internally consistent.
+
+The allocation builder was then improved in several iterative steps. The staging workflow now behaves more clearly: crop offers are staged into a submission area, confirmed allocations write to the database only on submit, and the progress display distinguishes between already submitted quantities and currently staged quantities. The export actions were also restricted so they are only available once the buyer batch is actually complete, both in the visible button state and in the server-side route logic. This prevents report generation from implying a finalized batch when the pledge is still incomplete.
+
+The matching and filtering experience on the allocation page was also reworked. The `hide ineligible crop offers` toggle now behaves correctly even when the underlying form submits both a hidden `0` value and a checked `1` value, which was previously causing inconsistent behaviour. The meaning of the toggle was also refined so it hides only truly blocked offers rather than removing every offer that still requires review. This keeps the page more useful operationally because borderline but potentially fixable offers remain visible to the aggregator.
+
+The settings feature was expanded into a more meaningful data-governance tool. A normalized `input_catalog` table was introduced so pesticides, fertilisers, irrigation events, soil amendments, and other standardized production inputs are defined once and then referenced consistently by crop input logs. This supports future buyer-rule matching far better than relying on loose free-text naming. The settings page now allows catalog entries to be viewed, added, removed or deactivated, and the database can also be reset from a dedicated utility section separate from the catalog controls.
+
+The synthetic dataset was updated multiple times to better support the workflow. Buyer names were reduced to a smaller set of spoofed but recognisable organisations, geographic data was kept inside Uganda, Kenya, and Zambia with valid coordinates and county-country alignment, and crop histories were made richer and more structured. Later, buyer criteria generation was loosened so the allocation builder would not become unrealistically strict, and allocation generation was corrected so the same farm offer is no longer split into many repeated allocation rows for one buyer pledge. This made the farmer participation report and allocation builder feel more believable.
+
+PDF reporting was then implemented as a real system feature rather than a placeholder. The allocation page now exports two report perspectives:
+- a buyer-oriented batch report
+- a farmer-oriented participation report
+
+These reports are generated dynamically from live database data using a reusable reporting module. The buyer report presents the batch as a whole, while the farmer report groups content by farm and shows how that farm participated in the wider buyer pledge. The report styling was designed to follow the same visual language as the web interface: light structure, restrained spacing, clearer hierarchy, and minimal decoration. The reporting implementation also handles incomplete data gracefully and supports multiple farms without collapsing into a raw dump.
+
+The PDF structure itself was then refined in response to usability review. In the buyer report, unnecessary sections such as batch activity and the earlier traceability-summary block were removed. Instead, the report now keeps the batch composition table and ends with one consolidated all-farms input-log table showing the actual records that support the batch: farm, offer, date, input, quantity, method, and notes. In the farmer participation report, contribution rows were made cleaner by aggregating repeated records per farm offer, which prevents the output from looking fragmented or misleading.
+
+The visual identity of the prototype was also formalized. A brand profile for “Malique’s Farm” was introduced, with a brand-guidelines document, a brand manifest JSON file, and shared visual assets in the static folder. This brand layer was then applied to the web shell and page styling so the interface now has a more coherent, modern, Apple-inspired feel rather than a generic academic prototype appearance.
+
+Why this was done:
+These changes were necessary because the project had reached a stage where raw correctness alone was no longer enough. The prototype needed to demonstrate that it can communicate structure, trust, and traceability through both the interface and the generated system artifacts. The allocation flow in particular had to move from “it technically works” to “it is understandable, auditable, and usable by an aggregator.”
+
+The settings/catalog work was also important because future buyer-rule matching depends on standardized input definitions. Without that normalization, the system would eventually break down into inconsistent free-text values that are difficult to compare reliably. The PDF reporting work was equally important because it demonstrates the value of the platform beyond data storage by turning system state into formal, human-readable records.
+
+Design reasoning:
+The reporting system was designed around perspectives rather than tables. Instead of mirroring the database directly, the buyer PDF is anchored to the pledge/batch as the primary unit of meaning, while the farmer PDF is anchored to farm participation within that batch. This matches how real users would interpret the documents.
+
+The export restriction was intentionally enforced both in the interface and in the route logic. Relying only on disabled buttons would not be robust enough, because requests can still be made directly. The route-level guard ensures that report generation aligns with actual database state.
+
+The synthetic data model was also adjusted carefully rather than simply increasing volumes. The goal was not “more records” but “more believable records.” Reducing repeated allocations from the same farm offer and softening buyer-rule strictness makes the demo data more realistic and produces clearer outputs across both the UI and the PDFs.
+
+Problems encountered:
+Several usability issues emerged only after the system became more complete:
+- the allocation-page toggle behaved inconsistently because checkbox submission included multiple values,
+- generated buyer criteria were often too strict, which made too many crop offers appear unusable,
+- the buyer PDF had too many sections and too much repetition for practical review,
+- and the farmer participation report exposed a weakness in the synthetic allocation generator by showing repeated rows for the same offer.
+
+There were also a number of smaller interface issues during this period, such as mismatched typography in the selected-pledge panel, repeated labels in the allocation cards, overly dense rule sections, awkward wording in action messages, and unhelpful placeholder files still lingering in the repo.
+
+Solution applied:
+Implemented a reusable PDF reporting module, wired live export routes from the allocation page, restricted exports to completed batches, normalized input definitions through an `input_catalog` table and settings page, corrected allocation-page filtering, loosened buyer-rule generation, fixed duplicate allocation generation for the same buyer-offer pair, improved report table layouts, and continued refining page-level UI/UX for the buyer queue, farm directory, farm profiles, and allocation builder.
+
+Files affected:
+- `app.py`
+- `database/generate_data.py`
+- `database/setup_database.py`
+- `docs/brand_guidelines.txt`
+- `docs/dev_log.txt`
+- `logic/allocation_logic.py`
+- `logic/database_helpers.py`
+- `logic/reporting.py`
+- `pages/base.html`
+- `pages/build_allocation.html`
+- `pages/buyer_pledges.html`
+- `pages/farm_profile.html`
+- `pages/farm_pledge_detail.html`
+- `pages/farms.html`
+- `pages/reusable/navbar.html`
+- `pages/settings.html`
+- `pyproject.toml`
+- `README.md`
+- `static/brand/atlas_harvest.json`
+- `static/css/main.css`
+- `static/images/atlas-grid-glow.svg`
+- `static/images/atlas-harvest-mark.svg`
+- `static/images/atlas-harvest-wordmark.svg`
+- `tests/conftest.py`
+- `tests/database/test_database.py`
+- `tests/database/test_database_helpers.py`
+- `tests/logic/test_allocation_logic.py`
+- `tests/logic/test_logging_config.py`
+- `tests/logic/test_reporting.py`
+- `tests/pages/test_allocations.py`
+- `tests/pages/test_buyer_pledges.py`
+- `tests/pages/test_farms.py`
+- `tests/pages/test_settings.py`
+
+Testing performed:
+Ran repeatedly during the refinement cycle:
+- `./venv/bin/python database/setup_database.py`
+- `./venv/bin/python database/generate_data.py`
+- `./venv/bin/python -m pytest tests/pages/test_allocations.py -q`
+- `./venv/bin/python -m pytest tests/logic/test_reporting.py -q`
+- `./venv/bin/python -m pytest tests/database/test_database.py -q`
+- `./venv/bin/python -m pytest -q`
+
+Results:
+- database schema migrations and resets completed successfully,
+- synthetic data regeneration completed successfully with zero validation anomalies,
+- PDF export tests passed for both buyer and farmer perspectives,
+- allocation-page route tests passed for staging, submission, export gating, and filtering,
+- database and helper tests passed for the updated data model,
+- and the full suite ultimately passed with 76 tests.
+
+Reflection:
+This period of work significantly improved the credibility of the prototype. The system is now much closer to behaving like a real coordination platform: the allocator-facing workflow is clearer, the data is more believable, the PDF exports are useful system artifacts rather than placeholders, and the underlying model is better prepared for future buyer-rule enforcement. The most important takeaway is that presentation, traceability, and data realism are tightly linked. As soon as the reports became strong enough to inspect seriously, weaknesses in the synthetic data model became visible. Fixing those weaknesses improved both the generated documents and the application experience itself.
+
+Date:
+2026-03-25
+
+Task:
 Consolidated runtime logging into a single application log file, cleaned related documentation/configuration, and expanded automated coverage for logging and allocation edge cases.
 
 What changed:
