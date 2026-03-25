@@ -22,6 +22,41 @@ The current prototype supports the aggregator workflow for:
 - ReportLab
 - Pytest
 
+## Share This Project
+
+The easiest way to share this project is to send the GitHub repository link:
+
+- [github.com/malique-spooner/agri-platform](https://github.com/malique-spooner/agri-platform)
+
+Anyone reviewing the project can run it locally with these steps:
+
+```bash
+git clone https://github.com/malique-spooner/agri-platform.git
+cd agri-platform
+python3 -m venv venv
+./venv/bin/pip install -e ".[dev]"
+./venv/bin/python database/setup_database.py
+./venv/bin/python database/generate_data.py
+./venv/bin/python app.py
+```
+
+Then open:
+
+- [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+
+That route opens the buyer-pledge queue, which is the main homepage for the prototype.
+
+If a reviewer wants to reset the demo data back to the seeded state, they can either:
+
+- use the `Reset database` action on `/settings`
+- or rerun `./venv/bin/python database/generate_data.py`
+
+If a reviewer only wants to inspect the stored data without running the UI, they can open:
+
+- `database/app_data.db`
+
+with any SQLite browser such as DB Browser for SQLite.
+
 ## Installation
 
 Create and activate a virtual environment, then install the project with dev tools:
