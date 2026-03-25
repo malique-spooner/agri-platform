@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from logic.allocation_logic import build_draft_allocation
+from logic.allocation_logic import build_draft_allocation, suggested_allocation_quantity
 from logic.database_helpers import get_farmer_pledges_for_crop
 
 
@@ -54,3 +54,28 @@ def test_build_draft_allocation_rejects_quantity_above_available_supply():
 
     assert result["errors"]
     assert "Alpha Farm can only contribute up to 250 kg." in result["errors"][0]
+
+
+def test_build_draft_allocation_rejects_non_selectable_pledges():
+    """Draft allocation should reject offers that fail buyer criteria."""
+    result = build_draft_allocation(
+        buyer_pledge={"remaining_quantity_kg": 900},
+        eligible_pledges=[
+            {
+                "farmer_pledge_id": 1,
+                "farm_name": "Gamma Farm",
+                "available_quantity_kg": 250,
+                "is_selectable": False,
+            },
+        ],
+        submitted_quantities={1: "200"},
+    )
+
+    assert result["errors"] == ["Gamma Farm does not currently satisfy the buyer criteria."]
+    assert result["selected_rows"] == []
+
+
+def test_suggested_allocation_quantity_caps_at_remaining_demand():
+    """Suggested quantities should never exceed the buyer's remaining demand."""
+    assert suggested_allocation_quantity(120, 400) == 120
+    assert suggested_allocation_quantity(0, 400) == 0.0

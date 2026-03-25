@@ -40,9 +40,10 @@
         </dl>
     </article>
 
-    <article class="info-card">
+    <article class="info-card info-card--wide">
         <h2>Input Log History</h2>
         <p class="table-subtle">Each log keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>
+        <div class="detail-table-wrap">
         <table>
             <thead>
                 <tr>
@@ -70,11 +71,12 @@
                 {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="6">No input logs have been recorded for this crop offer yet.</td>
+                    <td colspan="7">No input logs have been recorded for this crop offer yet.</td>
                 </tr>
                 {% endif %}
             </tbody>
         </table>
+        </div>
     </article>
 </section>
 {% endblock %}

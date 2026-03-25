@@ -81,10 +81,24 @@ CREATE TABLE IF NOT EXISTS pledge_allocations (
     FOREIGN KEY (farmer_pledge_id) REFERENCES farmer_pledges (farmer_pledge_id)
 );
 
+CREATE TABLE IF NOT EXISTS input_catalog (
+    input_catalog_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    input_category TEXT NOT NULL,
+    product_name TEXT NOT NULL,
+    brand_name TEXT,
+    application_method TEXT NOT NULL,
+    default_unit TEXT NOT NULL,
+    compliance_tag TEXT NOT NULL DEFAULT 'standard',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS farm_input_logs (
     input_log_id INTEGER PRIMARY KEY AUTOINCREMENT,
     farmer_account_id INTEGER NOT NULL,
     farmer_pledge_id INTEGER,
+    input_catalog_id INTEGER,
     input_type TEXT NOT NULL,
     product_name TEXT,
     brand_name TEXT,
@@ -95,7 +109,8 @@ CREATE TABLE IF NOT EXISTS farm_input_logs (
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (farmer_account_id) REFERENCES farmer_accounts (farmer_account_id),
-    FOREIGN KEY (farmer_pledge_id) REFERENCES farmer_pledges (farmer_pledge_id)
+    FOREIGN KEY (farmer_pledge_id) REFERENCES farmer_pledges (farmer_pledge_id),
+    FOREIGN KEY (input_catalog_id) REFERENCES input_catalog (input_catalog_id)
 );
 """
 
@@ -105,6 +120,7 @@ REQUIRED_FARMER_ACCOUNT_COLUMNS = {
 }
 
 REQUIRED_FARM_INPUT_LOG_COLUMNS = {
+    "input_catalog_id": "ALTER TABLE farm_input_logs ADD COLUMN input_catalog_id INTEGER REFERENCES input_catalog (input_catalog_id)",
     "product_name": "ALTER TABLE farm_input_logs ADD COLUMN product_name TEXT",
     "brand_name": "ALTER TABLE farm_input_logs ADD COLUMN brand_name TEXT",
     "application_method": "ALTER TABLE farm_input_logs ADD COLUMN application_method TEXT",

@@ -1,0 +1,28 @@
+{
+  "name": "Malique's Farm",
+  "descriptor": "Coordination Console",
+  "mission": "Bring fragmented agricultural supply into one readable operating view.",
+  "product_shell": {
+    "kicker": "Aggregator Workspace",
+    "nav_primary": "Demand Queue",
+    "nav_secondary": "Farm Network",
+    "footer_note": "Malique's Farm manages buyer demand, farm visibility, and allocation assembly in one operating surface."
+  },
+  "status_labels": {
+    "open": "Not started",
+    "partial": "In progress",
+    "fulfilled": "Completed"
+  },
+  "colors": {
+    "mist": "#EEF2F7",
+    "cloudWhite": "#F9FBFD",
+    "ink": "#0F1724",
+    "slate": "#5F6C7B",
+    "orchardGreen": "#2F6E5B",
+    "deepOrchard": "#234E41",
+    "sageSignal": "#8FB8A7",
+    "skyTint": "#B9D7F2",
+    "wheatTint": "#E8D7AA",
+    "roseAlert": "#D98A88"
+  }
+}

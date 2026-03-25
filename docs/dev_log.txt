@@ -1,4 +1,54 @@
 Date:
+2026-03-25
+
+Task:
+Consolidated runtime logging into a single application log file, cleaned related documentation/configuration, and expanded automated coverage for logging and allocation edge cases.
+
+What changed:
+The shared runtime logging configuration was revised so the project now writes to one log file only: `logs/app.log`. The previous implementation used a rotating file handler, which created sibling files such as `app.log.1`, `app.log.2`, and `app.log.3`. That behaviour was not aligned with the intended project setup, because it made it look as though logging was fragmented across multiple files instead of maintaining a single operational log history.
+
+The logging configuration in `logic/logging_config.py` was updated to use a single file-backed handler rather than a rotating handler. Handler detection was also tightened so repeated calls to `configure_logging()` do not accumulate duplicate file handlers on the root logger.
+
+Project metadata and documentation were then updated to match the corrected behaviour. The README now explicitly states that runtime logs are written to one file and that rotated siblings are no longer part of the supported setup. The pytest configuration in `pyproject.toml` was also refreshed so the test discovery and coverage settings are more explicit.
+
+Automated coverage was expanded in two areas. A new logging test file was added to verify that the application uses exactly one file-backed log handler and that repeated configuration calls reuse that same handler rather than stacking duplicates. Allocation helper tests were also extended with additional edge cases covering non-selectable offers and suggested-quantity limits, since this was a sensible place to strengthen behavior checks while the test suite was being revisited.
+
+Why this was done:
+The project had drifted away from the intended logging model. Multiple `app.log.*` files were present in the runtime log directory, which suggested to the user that logging had become stale or fragmented. Consolidating to one log file makes the operational logging story simpler, easier to inspect manually, and more consistent with the project documentation.
+
+Design reasoning:
+For this prototype, a single append-only application log is more useful than rotation because the runtime load is low and debugging is mostly done by directly inspecting one file during development. Eliminating rotation also reduces ambiguity when checking whether recent activity has actually been logged.
+
+The new tests target the logging contract directly rather than relying on manual observation of log files. This provides stronger confidence that the application will continue to configure logging in the intended way as the codebase evolves.
+
+Problems encountered:
+The existing implementation used `RotatingFileHandler`, which was the direct cause of the numbered log files. There was also a risk that replacing the handler could accidentally introduce duplicate file handlers if configuration ran more than once in the same process.
+
+Solution applied:
+Replaced the rotating file handler with a single file handler, added helper logic to recognise and reuse the application log handler safely, updated README and pytest configuration, and added dedicated logging and allocation-edge tests.
+
+Files affected:
+- `logic/logging_config.py`
+- `tests/logic/test_logging_config.py`
+- `tests/logic/test_allocation_logic.py`
+- `README.md`
+- `pyproject.toml`
+- `docs/dev_log.txt`
+
+Testing performed:
+Ran:
+- `./venv/bin/python -m pytest tests/logic/test_logging_config.py tests/logic/test_allocation_logic.py -q`
+- `./venv/bin/python -m pytest -q`
+
+Results:
+- dedicated logging tests passed,
+- additional allocation edge-case tests passed,
+- and the full suite passed successfully.
+
+Reflection:
+This cleanup removed a low-level inconsistency that had started to undermine trust in the runtime logging setup. The fix itself is small, but it improves maintainability because the application now has a clearer operational contract: one runtime log file, one logging configuration path, and test coverage that directly enforces that expectation.
+
+Date:
 2026-03-24
 
 Task:

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <p class="eyebrow">Settings</p>
+    <h1>Input Catalog</h1>
+    <p class="lede">
+        Standardize pesticides, fertilisers, irrigation cycles, organic inputs, and restricted substances so crop logs
+        and buyer rules reference one clean source of truth.
+    </p>
+</section>
+
+{% if page_message %}
+<div class="banner-message">{{ page_message }}</div>
+{% endif %}
+
+<section class="settings-grid">
+    <article class="info-card">
+        <div class="queue-panel__header">
+            <div>
+                <p class="eyebrow">Add Input</p>
+                <h2>Catalog entry</h2>
+            </div>
+        </div>
+        <form method="post" class="settings-form">
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="category_filter" value="{{ category_filter }}">
+            <input type="hidden" name="compliance_filter" value="{{ compliance_filter }}">
+            <input type="hidden" name="include_inactive" value="{{ '1' if include_inactive else '' }}">
+
+            <label>
+                <span>Category</span>
+                <input type="text" name="input_category" placeholder="Pesticide" required>
+            </label>
+            <label>
+                <span>Product name</span>
+                <input type="text" name="product_name" placeholder="Azadirachtin extract" required>
+            </label>
+            <label>
+                <span>Brand</span>
+                <input type="text" name="brand_name" placeholder="EcoNeem">
+            </label>
+            <label>
+                <span>Application method</span>
+                <input type="text" name="application_method" placeholder="Foliar spray" required>
+            </label>
+            <label>
+                <span>Default unit</span>
+                <input type="text" name="default_unit" placeholder="L" required>
+            </label>
+            <label>
+                <span>Catalog tag</span>
+                <select name="compliance_tag">
+                    {% for option in compliance_options %}
+                    <option value="{{ option }}">{{ option|title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="settings-form__full">
+                <span>Notes</span>
+                <textarea name="notes" rows="4" placeholder="Optional short description or handling note"></textarea>
+            </label>
+            <button class="primary-button" type="submit">Add input</button>
+        </form>
+    </article>
+
+    <article class="info-card info-card--wide">
+        <div class="queue-panel__header">
+            <div>
+                <p class="eyebrow">Catalog</p>
+                <h2>Active standardized inputs</h2>
+            </div>
+        </div>
+
+        <form method="get" class="filter-form filter-form--settings">
+            <div class="table-subtle">View, filter, and retire standardized inputs.</div>
+            <select name="category">
+                <option value="">All categories</option>
+                {% for option in category_options %}
+                <option value="{{ option }}" {% if option == category_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+            <select name="compliance">
+                <option value="">All catalog tags</option>
+                {% for option in compliance_options %}
+                <option value="{{ option }}" {% if option == compliance_filter %}selected{% endif %}>{{ option|title }}</option>
+                {% endfor %}
+            </select>
+            <label class="toggle-row">
+                <input type="checkbox" name="include_inactive" value="1" {% if include_inactive %}checked{% endif %}>
+                <span>Show inactive</span>
+            </label>
+            <button type="submit">Filter</button>
+        </form>
+
+        <div class="detail-table-wrap">
+            <table class="directory-table">
+                <thead>
+                    <tr>
+                        <th>Input</th>
+                        <th>Method</th>
+                        <th>Unit</th>
+                        <th>Tag</th>
+                        <th>Usage</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in catalog_entries %}
+                    <tr>
+                        <td>
+                            <strong>{{ entry.display_name }}</strong>
+                            {% if not entry.is_active %}
+                            <div class="table-subtle">Inactive</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.application_method }}</td>
+                        <td>{{ entry.default_unit }}</td>
+                        <td><span class="metric-pill">{{ entry.compliance_tag|title }}</span></td>
+                        <td>{{ entry.usage_count }}</td>
+                        <td>
+                            <form method="post" class="inline-form">
+                                <input type="hidden" name="action" value="remove">
+                                <input type="hidden" name="input_catalog_id" value="{{ entry.input_catalog_id }}">
+                                <input type="hidden" name="category_filter" value="{{ category_filter }}">
+                                <input type="hidden" name="compliance_filter" value="{{ compliance_filter }}">
+                                <input type="hidden" name="include_inactive" value="{{ '1' if include_inactive else '' }}">
+                                <button class="secondary-button" type="submit">
+                                    {% if entry.usage_count %}Deactivate{% else %}Remove{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="table-subtle">No catalog entries match the current filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+
+<section class="settings-utility">
+    <article class="info-card">
+        <div class="queue-panel__header">
+            <div>
+                <p class="eyebrow">Database</p>
+                <h2>Reset demo data</h2>
+            </div>
+        </div>
+        <p class="rule-copy">Rebuild the seeded demo database and clear staged allocation sessions.</p>
+        <form method="post" class="settings-reset-form">
+            <input type="hidden" name="action" value="reset_database">
+            <button class="secondary-button" type="submit">Reset database</button>
+        </form>
+    </article>
+</section>
+{% endblock %}

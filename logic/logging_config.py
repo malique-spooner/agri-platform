@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
@@ -13,8 +12,13 @@ APP_LOG_PATH = LOGS_DIR / "app.log"
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
 
+def is_app_file_handler(handler: logging.Handler) -> bool:
+    """Return whether a handler is the application's file-backed log handler."""
+    return isinstance(handler, logging.FileHandler) and hasattr(handler, "baseFilename")
+
+
 def configure_logging(level: int = logging.INFO) -> Path:
-    """Configure shared application logging and return the log file path."""
+    """Configure shared application logging and return the single log file path."""
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     APP_LOG_PATH.touch(exist_ok=True)
 
@@ -22,9 +26,7 @@ def configure_logging(level: int = logging.INFO) -> Path:
     root_logger.setLevel(level)
 
     for handler in list(root_logger.handlers):
-        if isinstance(handler, RotatingFileHandler) and Path(
-            getattr(handler, "baseFilename", "")
-        ) != APP_LOG_PATH:
+        if is_app_file_handler(handler) and Path(getattr(handler, "baseFilename", "")) != APP_LOG_PATH:
             root_logger.removeHandler(handler)
             handler.close()
 
@@ -32,18 +34,12 @@ def configure_logging(level: int = logging.INFO) -> Path:
         (
             handler
             for handler in root_logger.handlers
-            if isinstance(handler, RotatingFileHandler)
-            and Path(getattr(handler, "baseFilename", "")) == APP_LOG_PATH
+            if is_app_file_handler(handler) and Path(getattr(handler, "baseFilename", "")) == APP_LOG_PATH
         ),
         None,
     )
     if file_handler is None:
-        file_handler = RotatingFileHandler(
-            APP_LOG_PATH,
-            maxBytes=1_048_576,
-            backupCount=3,
-            encoding="utf-8",
-        )
+        file_handler = logging.FileHandler(APP_LOG_PATH, encoding="utf-8")
         file_handler.setLevel(level)
         root_logger.addHandler(file_handler)
     file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
@@ -53,7 +49,7 @@ def configure_logging(level: int = logging.INFO) -> Path:
             handler
             for handler in root_logger.handlers
             if isinstance(handler, logging.StreamHandler)
-            and not isinstance(handler, RotatingFileHandler)
+            and not is_app_file_handler(handler)
         ),
         None,
     )

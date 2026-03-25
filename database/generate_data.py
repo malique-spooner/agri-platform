@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 import logging
 from pathlib import Path
@@ -33,26 +33,34 @@ CROPS = [
     "Carrots",
     "Spinach",
     "Peppers",
+    "Avocados",
+    "Groundnuts",
+    "Soybeans",
+    "Sweet Potatoes",
 ]
-BUYER_CROP_WEIGHTS = [18, 17, 15, 13, 10, 7, 6, 6, 4, 4]
-FARMER_CROP_WEIGHTS = [13, 12, 10, 9, 15, 14, 11, 7, 5, 4]
-REGIONS = {
-    "Kenya": ["Nakuru", "Kiambu", "Meru", "Machakos"],
-    "Tanzania": ["Arusha", "Morogoro", "Mbeya", "Dodoma"],
-    "Uganda": ["Wakiso", "Mbarara", "Gulu", "Mbale"],
-    "Rwanda": ["Eastern Province", "Northern Province", "Southern Province"],
-    "Malawi": ["Lilongwe", "Mzuzu", "Blantyre", "Zomba"],
-    "Zambia": ["Lusaka", "Central", "Copperbelt", "Eastern"],
-    "Zimbabwe": ["Mashonaland East", "Midlands", "Manicaland", "Masvingo"],
-}
-REGION_COORDINATE_RANGES = {
-    "Kenya": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
-    "Tanzania": {"lat": (-11.75, -0.98), "lon": (29.34, 40.44)},
-    "Uganda": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
-    "Rwanda": {"lat": (-2.84, -1.05), "lon": (28.86, 30.90)},
-    "Malawi": {"lat": (-17.13, -9.37), "lon": (32.67, 35.92)},
-    "Zambia": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
-    "Zimbabwe": {"lat": (-22.43, -15.61), "lon": (25.24, 33.06)},
+BUYER_CROP_WEIGHTS = [14, 13, 16, 9, 8, 6, 5, 5, 4, 5, 7, 8, 9, 8]
+COUNTRY_PROFILES = {
+    "Uganda": {
+        "counties": ["Wakiso", "Mbarara", "Gulu", "Mbale"],
+        "coordinates": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
+        "farmer_crop_weights": [17, 16, 14, 8, 5, 9, 5, 5, 6, 4, 3, 7, 4, 9],
+        "farm_size_range": (1.8, 34.0),
+        "quantity_multiplier": 0.85,
+    },
+    "Kenya": {
+        "counties": ["Nakuru", "Kiambu", "Meru", "Machakos"],
+        "coordinates": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
+        "farmer_crop_weights": [11, 13, 9, 13, 11, 11, 10, 9, 5, 7, 10, 4, 8, 6],
+        "farm_size_range": (2.4, 48.0),
+        "quantity_multiplier": 1.0,
+    },
+    "Zambia": {
+        "counties": ["Lusaka", "Central", "Copperbelt", "Eastern"],
+        "coordinates": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
+        "farmer_crop_weights": [7, 10, 22, 8, 9, 4, 6, 4, 3, 10, 2, 8, 14, 11],
+        "farm_size_range": (4.0, 72.0),
+        "quantity_multiplier": 1.3,
+    },
 }
 FIRST_NAMES = [
     "Amina",
@@ -121,70 +129,87 @@ FARM_PREFIXES = [
     "Golden Acre",
 ]
 FARM_SUFFIXES = ["Farm", "Fields", "Holdings", "Acres", "Gardens"]
-INPUT_CATALOG = [
+INPUT_CATALOG_SEED = [
     {
-        "input_type": "Pesticide",
+        "input_category": "Pesticide",
         "product_name": "Azadirachtin extract",
         "brand_name": "EcoNeem",
         "application_method": "Foliar spray",
-        "unit": "L",
+        "default_unit": "L",
+        "compliance_tag": "organic",
         "quantity_range": (1, 18),
     },
     {
-        "input_type": "Pesticide",
+        "input_category": "Pesticide",
         "product_name": "Pyrethrin spray",
         "brand_name": "CropShield",
         "application_method": "Knapsack spray",
-        "unit": "L",
+        "default_unit": "L",
+        "compliance_tag": "standard",
         "quantity_range": (1, 14),
     },
     {
-        "input_type": "Fertiliser",
+        "input_category": "Fertiliser",
         "product_name": "Organic compost",
         "brand_name": "SoilRich",
         "application_method": "Soil incorporation",
-        "unit": "kg",
+        "default_unit": "kg",
+        "compliance_tag": "organic",
         "quantity_range": (80, 650),
     },
     {
-        "input_type": "Fertiliser",
+        "input_category": "Fertiliser",
         "product_name": "NPK 17-17-17",
         "brand_name": "GreenGrow",
         "application_method": "Side dressing",
-        "unit": "kg",
+        "default_unit": "kg",
+        "compliance_tag": "standard",
         "quantity_range": (40, 300),
     },
     {
-        "input_type": "Seed treatment",
+        "input_category": "Fungicide",
         "product_name": "Certified seed dressing",
         "brand_name": "SeedSure",
         "application_method": "Pre-plant seed coat",
-        "unit": "kg",
+        "default_unit": "kg",
+        "compliance_tag": "restricted",
         "quantity_range": (5, 80),
     },
     {
-        "input_type": "Irrigation",
+        "input_category": "Irrigation",
         "product_name": "Drip irrigation cycle",
         "brand_name": None,
         "application_method": "Drip line",
-        "unit": "m3",
+        "default_unit": "m3",
+        "compliance_tag": "standard",
         "quantity_range": (6, 180),
     },
     {
-        "input_type": "Mulch",
+        "input_category": "Mulch",
         "product_name": "Organic mulch cover",
         "brand_name": None,
         "application_method": "Bed coverage",
-        "unit": "rolls",
+        "default_unit": "rolls",
+        "compliance_tag": "organic",
         "quantity_range": (1, 25),
     },
     {
-        "input_type": "Soil amendment",
+        "input_category": "Soil amendment",
         "product_name": "Agricultural lime",
         "brand_name": "FieldBalance",
         "application_method": "Broadcast application",
-        "unit": "kg",
+        "default_unit": "kg",
+        "compliance_tag": "restricted",
         "quantity_range": (50, 500),
+    },
+    {
+        "input_category": "Biological control",
+        "product_name": "Bacillus biopesticide",
+        "brand_name": "BioGuard",
+        "application_method": "Foliar spray",
+        "default_unit": "L",
+        "compliance_tag": "organic",
+        "quantity_range": (1, 12),
     },
 ]
 
@@ -213,7 +238,7 @@ def iso_date(value: datetime) -> str:
     return value.date().isoformat()
 
 
-def random_datetime(rng: random.Random, now: datetime, max_days_back: int = 540) -> datetime:
+def random_datetime(rng: random.Random, now: datetime, max_days_back: int = 180) -> datetime:
     """Return a realistic timestamp in the recent past."""
     days_back = rng.randint(0, max_days_back)
     seconds_back = rng.randint(0, 24 * 60 * 60 - 1)
@@ -246,9 +271,14 @@ def build_farm_name(rng: random.Random, index: int, county: str) -> str:
 def build_buyer_criteria_payload(
     rng: random.Random,
     crop_type: str,
+    catalog: list[dict[str, object]],
 ) -> dict[str, object]:
     """Return structured buyer criteria that can be matched against input logs."""
-    catalog_for_crop = [record for record in INPUT_CATALOG if record["input_type"] != "Seed treatment"]
+    catalog_for_crop = [
+        record
+        for record in catalog
+        if str(record["input_category"]) != "Fungicide"
+    ]
     required_count = rng.choices([0, 1, 2], weights=[4, 4, 2], k=1)[0]
     blocked_count = rng.choices([0, 1, 2], weights=[3, 5, 2], k=1)[0]
 
@@ -258,7 +288,7 @@ def build_buyer_criteria_payload(
     for record in rng.sample(catalog_for_crop, k=min(required_count, len(catalog_for_crop))):
         required_inputs.append(
             {
-                "input_type": record["input_type"],
+                "input_type": record["input_category"],
                 "product_name": record["product_name"],
                 "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.6 else None,
             }
@@ -272,7 +302,7 @@ def build_buyer_criteria_payload(
     for record in rng.sample(remaining_catalog, k=min(blocked_count, len(remaining_catalog))):
         blocked_inputs.append(
             {
-                "input_type": record["input_type"],
+                "input_type": record["input_category"],
                 "product_name": record["product_name"],
                 "brand_name": record["brand_name"] if record["brand_name"] and rng.random() < 0.75 else None,
             }
@@ -295,7 +325,7 @@ def random_phone(rng: random.Random) -> str:
 
 def region_bounds(region: str) -> dict[str, tuple[float, float]]:
     """Return latitude/longitude bounds for a supported country."""
-    return REGION_COORDINATE_RANGES[region]
+    return COUNTRY_PROFILES[region]["coordinates"]
 
 
 def random_coordinates_for_region(rng: random.Random, region: str) -> tuple[float, float]:
@@ -311,9 +341,52 @@ def choose_crop(rng: random.Random, weights: list[int]) -> str:
     return rng.choices(CROPS, weights=weights, k=1)[0]
 
 
-def choose_input_record(rng: random.Random) -> dict[str, object]:
+def choose_input_record(rng: random.Random, catalog: list[dict[str, object]]) -> dict[str, object]:
     """Return a structured input record for log generation."""
-    return rng.choice(INPUT_CATALOG)
+    return rng.choice(catalog)
+
+
+def default_now() -> datetime:
+    """Anchor generated dates to the current operating day."""
+    return datetime.combine(date.today(), datetime.min.time()).replace(hour=9)
+
+
+def seed_input_catalog(connection: sqlite3.Connection) -> list[dict[str, object]]:
+    """Populate the normalized input catalog and return the seeded rows with ids."""
+    connection.execute("DELETE FROM input_catalog")
+    seeded_rows: list[dict[str, object]] = []
+    for record in INPUT_CATALOG_SEED:
+        cursor = connection.execute(
+            """
+            INSERT INTO input_catalog (
+                input_category,
+                product_name,
+                brand_name,
+                application_method,
+                default_unit,
+                compliance_tag,
+                is_active,
+                notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                record["input_category"],
+                record["product_name"],
+                record["brand_name"],
+                record["application_method"],
+                record["default_unit"],
+                record["compliance_tag"],
+                1,
+                None,
+            ),
+        )
+        seeded_rows.append(
+            {
+                **record,
+                "input_catalog_id": cursor.lastrowid,
+            }
+        )
+    return seeded_rows
 
 
 def choose_pledge_count(
@@ -339,6 +412,7 @@ def clear_existing_data(connection: sqlite3.Connection) -> None:
         "buyer_pledges",
         "farmer_accounts",
         "buyer_accounts",
+        "input_catalog",
     ):
         connection.execute(f"DELETE FROM {table_name}")
     connection.commit()
@@ -394,18 +468,19 @@ def insert_farmer_accounts(
 ) -> list[dict[str, object]]:
     """Insert farmer accounts and return the inserted records."""
     farmers: list[dict[str, object]] = []
-    region_names = sorted(REGIONS)
+    region_names = sorted(COUNTRY_PROFILES)
     for index in range(farmer_count):
         created_at = random_datetime(rng, now)
         farmer_name = random_name(rng)
         region = rng.choice(region_names)
-        county = rng.choice(REGIONS[region])
+        profile = COUNTRY_PROFILES[region]
+        county = rng.choice(profile["counties"])
         farm_name = build_farm_name(rng, index, county)
         latitude, longitude = random_coordinates_for_region(rng, region)
         email_name = farmer_name.lower().replace(" ", ".")
         email = maybe_none(rng, f"{email_name}@farmers.example", 0.35)
         phone = maybe_none(rng, random_phone(rng), 0.15)
-        total_hectares = round(rng.uniform(2.5, 120.0), 1)
+        total_hectares = round(rng.uniform(*profile["farm_size_range"]), 1)
         cursor = connection.execute(
             """
             INSERT INTO farmer_accounts (
@@ -437,6 +512,9 @@ def insert_farmer_accounts(
         farmers.append(
             {
                 "farmer_account_id": cursor.lastrowid,
+                "region": region,
+                "county": county,
+                "total_hectares": total_hectares,
                 "created_at": created_at,
             }
         )
@@ -449,6 +527,7 @@ def insert_buyer_pledges(
     buyers: list[dict[str, object]],
     max_pledges: int,
     total_pledges: int,
+    input_catalog: list[dict[str, object]],
 ) -> list[dict[str, object]]:
     """Insert buyer pledges with realistic demand variation."""
     if not buyers or max_pledges <= 0 or total_pledges <= 0:
@@ -482,14 +561,14 @@ def insert_buyer_pledges(
         for _ in range(pledge_count):
             created_at = buyer["created_at"] + timedelta(days=rng.randint(0, 30))
             crop_type = choose_crop(rng, BUYER_CROP_WEIGHTS)
-            quantity_kg = rng.randint(250, 5000)
+            quantity_kg = rng.randint(350, 3200)
             target_price_per_kg = maybe_none(rng, round(rng.uniform(0.8, 4.5), 2), 0.3)
             needed_by_date = maybe_none(
                 rng,
-                iso_date(created_at + timedelta(days=rng.randint(14, 180))),
-                0.12,
+                iso_date(max(created_at, default_now()) + timedelta(days=rng.randint(5, 45))),
+                0.08,
             )
-            notes_payload = build_buyer_criteria_payload(rng, crop_type)
+            notes_payload = build_buyer_criteria_payload(rng, crop_type, input_catalog)
             notes = json.dumps(notes_payload, sort_keys=True)
             cursor = connection.execute(
                 """
@@ -538,15 +617,24 @@ def insert_farmer_pledges(
     pledges: list[dict[str, object]] = []
     for index, farmer in enumerate(farmers):
         pledge_count = choose_pledge_count(rng, max_pledges, zero_indexes, index)
+        farmer_profile = COUNTRY_PROFILES[str(farmer["region"])]
         for _ in range(pledge_count):
-            created_at = farmer["created_at"] + timedelta(days=rng.randint(0, 40))
-            crop_type = choose_crop(rng, FARMER_CROP_WEIGHTS)
-            quantity_kg = rng.randint(180, 4200)
+            creation_window_start = max(farmer["created_at"], default_now() - timedelta(days=80))
+            creation_window_end = default_now() - timedelta(days=20)
+            if creation_window_start >= creation_window_end:
+                created_at = creation_window_end
+            else:
+                created_at = creation_window_start + timedelta(
+                    days=rng.randint(0, (creation_window_end - creation_window_start).days)
+                )
+            crop_type = choose_crop(rng, farmer_profile["farmer_crop_weights"])
+            hectare_factor = max(float(farmer["total_hectares"]) * rng.uniform(25, 85), 120)
+            quantity_kg = int(round(hectare_factor * float(farmer_profile["quantity_multiplier"])))
             asking_price_per_kg = maybe_none(rng, round(rng.uniform(0.7, 4.0), 2), 0.25)
             available_from_date = maybe_none(
                 rng,
-                iso_date(created_at + timedelta(days=rng.randint(7, 150))),
-                0.18,
+                iso_date(default_now() + timedelta(days=rng.randint(-14, 55))),
+                0.1,
             )
             notes = maybe_none(
                 rng,
@@ -720,6 +808,7 @@ def insert_farm_input_logs(
     rng: random.Random,
     farmers: list[dict[str, object]],
     farmer_pledges: list[dict[str, object]],
+    input_catalog: list[dict[str, object]],
     max_input_logs: int,
     now: datetime,
 ) -> None:
@@ -742,10 +831,10 @@ def insert_farm_input_logs(
             farm_log_count = 0
 
         for _ in range(farm_log_count):
-            input_record = choose_input_record(rng)
-            unit = str(input_record["unit"])
+            input_record = choose_input_record(rng, input_catalog)
+            unit = str(input_record["default_unit"])
             min_quantity, max_quantity = input_record["quantity_range"]
-            log_base = random_datetime(rng, now, max_days_back=240)
+            log_base = now - timedelta(days=rng.randint(2, 75))
             notes = maybe_none(
                 rng,
                 rng.choice(
@@ -763,6 +852,7 @@ def insert_farm_input_logs(
                 INSERT INTO farm_input_logs (
                     farmer_account_id,
                     farmer_pledge_id,
+                    input_catalog_id,
                     input_type,
                     product_name,
                     brand_name,
@@ -772,12 +862,13 @@ def insert_farm_input_logs(
                     log_date,
                     notes,
                     created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     farmer_id,
                     None,
-                    input_record["input_type"],
+                    input_record["input_catalog_id"],
+                    input_record["input_category"],
                     input_record["product_name"],
                     input_record["brand_name"],
                     input_record["application_method"],
@@ -796,10 +887,10 @@ def insert_farm_input_logs(
             pledge_created_at = datetime.fromisoformat(str(pledge["created_at"]))
             pledge_log_count = rng.randint(2, max_input_logs)
             for _ in range(pledge_log_count):
-                input_record = choose_input_record(rng)
-                unit = str(input_record["unit"])
+                input_record = choose_input_record(rng, input_catalog)
+                unit = str(input_record["default_unit"])
                 min_quantity, max_quantity = input_record["quantity_range"]
-                days_forward = rng.randint(0, 120)
+                days_forward = rng.randint(0, 45)
                 log_base = pledge_created_at + timedelta(days=days_forward)
                 if log_base > now:
                     log_base = now - timedelta(days=rng.randint(0, 10))
@@ -821,6 +912,7 @@ def insert_farm_input_logs(
                     INSERT INTO farm_input_logs (
                         farmer_account_id,
                         farmer_pledge_id,
+                        input_catalog_id,
                         input_type,
                         product_name,
                         brand_name,
@@ -830,12 +922,13 @@ def insert_farm_input_logs(
                         log_date,
                         notes,
                         created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         farmer_id,
                         pledge["farmer_pledge_id"],
-                        input_record["input_type"],
+                        input_record["input_catalog_id"],
+                        input_record["input_category"],
                         input_record["product_name"],
                         input_record["brand_name"],
                         input_record["application_method"],
@@ -880,11 +973,11 @@ def validate_coordinates(connection: sqlite3.Connection) -> None:
             raise RuntimeError(
                 f"Coordinate validation failed: farmer_account_id={farmer_account_id} is missing coordinates"
             )
-        if region not in REGIONS:
+        if region not in COUNTRY_PROFILES:
             raise RuntimeError(
                 f"Coordinate validation failed: farmer_account_id={farmer_account_id} has unsupported region '{region}'"
             )
-        if county not in REGIONS[region]:
+        if county not in COUNTRY_PROFILES[region]["counties"]:
             raise RuntimeError(
                 f"Coordinate validation failed: farmer_account_id={farmer_account_id} has county '{county}' outside region '{region}'"
             )
@@ -927,6 +1020,14 @@ def validate_temporal_rules(connection: sqlite3.Connection) -> None:
 
 def validate_input_log_structure(connection: sqlite3.Connection) -> None:
     """Validate that input logs carry future-proof classification details."""
+    missing_catalog_links = connection.execute(
+        "SELECT COUNT(*) FROM farm_input_logs WHERE input_catalog_id IS NULL"
+    ).fetchone()[0]
+    if missing_catalog_links:
+        raise RuntimeError(
+            f"Input-log validation failed: {missing_catalog_links} record(s) missing input catalog references"
+        )
+
     missing_product_names = connection.execute(
         "SELECT COUNT(*) FROM farm_input_logs WHERE product_name IS NULL OR TRIM(product_name) = ''"
     ).fetchone()[0]
@@ -1037,6 +1138,7 @@ def validate_status_coverage(connection: sqlite3.Connection) -> None:
 def table_counts(connection: sqlite3.Connection) -> dict[str, int]:
     """Return row counts for all major tables."""
     tables = (
+        "input_catalog",
         "buyer_accounts",
         "buyer_pledges",
         "farmer_accounts",
@@ -1073,7 +1175,7 @@ def print_summary(connection: sqlite3.Connection) -> None:
 def generate_dataset(args: argparse.Namespace) -> None:
     """Create schema, populate synthetic data, validate it, and print a summary."""
     rng = random.Random(args.seed)
-    now = datetime.now()
+    now = default_now()
     logger.info(
         "Generating dataset buyers=%s buyer_pledges_total=%s farmers=%s max_farmer_pledges=%s max_input_logs=%s db=%s",
         args.buyers,
@@ -1088,6 +1190,7 @@ def generate_dataset(args: argparse.Namespace) -> None:
     with sqlite3.connect(args.database_path) as connection:
         connection.execute("PRAGMA foreign_keys = ON;")
         clear_existing_data(connection)
+        input_catalog = seed_input_catalog(connection)
         buyers = insert_buyer_accounts(connection, rng, args.buyers, now)
         farmers = insert_farmer_accounts(connection, rng, args.farmers, now)
         buyer_pledges = insert_buyer_pledges(
@@ -1096,10 +1199,11 @@ def generate_dataset(args: argparse.Namespace) -> None:
             buyers,
             args.max_buyer_pledges,
             args.buyer_pledges_total,
+            input_catalog,
         )
         farmer_pledges = insert_farmer_pledges(connection, rng, farmers, args.max_farmer_pledges)
         insert_allocations(connection, rng, buyer_pledges, farmer_pledges)
-        insert_farm_input_logs(connection, rng, farmers, farmer_pledges, args.max_input_logs, now)
+        insert_farm_input_logs(connection, rng, farmers, farmer_pledges, input_catalog, args.max_input_logs, now)
         connection.commit()
 
         validate_foreign_keys(connection)

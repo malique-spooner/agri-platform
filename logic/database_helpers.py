@@ -14,6 +14,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATABASE_PATH = PROJECT_ROOT / "database" / "app_data.db"
 logger = logging.getLogger(__name__)
+ALLOWED_INPUT_TAGS = {"standard", "organic", "restricted"}
 
 
 def get_database_path() -> Path:
@@ -36,6 +37,155 @@ def get_connection() -> sqlite3.Connection:
 def rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
     """Convert SQLite row objects to plain dictionaries."""
     return [dict(row) for row in rows]
+
+
+def build_input_display_name(record: dict[str, Any]) -> str:
+    """Return a compact standardized label for an input catalog entry."""
+    parts = [
+        str(record.get("input_category") or "").strip(),
+        str(record.get("product_name") or "").strip(),
+    ]
+    brand_name = str(record.get("brand_name") or "").strip()
+    if brand_name:
+        parts.append(brand_name)
+    return " · ".join(part for part in parts if part)
+
+
+def get_input_catalog_entries(
+    category_filter: str = "",
+    compliance_filter: str = "",
+    include_inactive: bool = False,
+) -> list[dict[str, Any]]:
+    """Return standardized input records for the settings page."""
+    logger.info(
+        "Fetching input catalog entries category=%r compliance=%r include_inactive=%s",
+        category_filter,
+        compliance_filter,
+        include_inactive,
+    )
+    query = """
+        SELECT
+            ic.input_catalog_id,
+            ic.input_category,
+            ic.product_name,
+            ic.brand_name,
+            ic.application_method,
+            ic.default_unit,
+            ic.compliance_tag,
+            ic.is_active,
+            ic.notes,
+            ic.created_at,
+            COUNT(fil.input_log_id) AS usage_count
+        FROM input_catalog AS ic
+        LEFT JOIN farm_input_logs AS fil
+            ON ic.input_catalog_id = fil.input_catalog_id
+        WHERE (? = '' OR ic.input_category = ?)
+          AND (? = '' OR ic.compliance_tag = ?)
+          AND (? = 1 OR ic.is_active = 1)
+        GROUP BY
+            ic.input_catalog_id,
+            ic.input_category,
+            ic.product_name,
+            ic.brand_name,
+            ic.application_method,
+            ic.default_unit,
+            ic.compliance_tag,
+            ic.is_active,
+            ic.notes,
+            ic.created_at
+        ORDER BY ic.input_category, ic.product_name, COALESCE(ic.brand_name, '')
+    """
+
+    with get_connection() as connection:
+        rows = connection.execute(
+            query,
+            (
+                category_filter,
+                category_filter,
+                compliance_filter,
+                compliance_filter,
+                1 if include_inactive else 0,
+            ),
+        ).fetchall()
+
+    entries = rows_to_dicts(rows)
+    for entry in entries:
+        entry["display_name"] = build_input_display_name(entry)
+        entry["is_active"] = bool(entry.get("is_active"))
+    logger.info("Fetched %s input catalog entr(y/ies)", len(entries))
+    return entries
+
+
+def create_input_catalog_entry(
+    *,
+    input_category: str,
+    product_name: str,
+    brand_name: str | None,
+    application_method: str,
+    default_unit: str,
+    compliance_tag: str,
+    notes: str | None,
+) -> int:
+    """Create a standardized input catalog entry and return its id."""
+    logger.info("Creating input catalog entry category=%s product=%s", input_category, product_name)
+    normalized_tag = compliance_tag.strip().lower()
+    if normalized_tag not in ALLOWED_INPUT_TAGS:
+        logger.warning("Unsupported catalog tag %r received; falling back to standard", compliance_tag)
+        normalized_tag = "standard"
+    created_at = datetime.now().replace(microsecond=0).isoformat(sep=" ")
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO input_catalog (
+                input_category,
+                product_name,
+                brand_name,
+                application_method,
+                default_unit,
+                compliance_tag,
+                is_active,
+                notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+            """,
+            (
+                input_category.strip(),
+                product_name.strip(),
+                brand_name.strip() if brand_name and brand_name.strip() else None,
+                application_method.strip(),
+                default_unit.strip(),
+                normalized_tag,
+                notes.strip() if notes and notes.strip() else None,
+                created_at,
+            ),
+        )
+        connection.commit()
+        return int(cursor.lastrowid)
+
+
+def remove_input_catalog_entry(input_catalog_id: int) -> str:
+    """Delete an unused catalog entry or deactivate one that is already referenced."""
+    logger.info("Removing input catalog entry id=%s", input_catalog_id)
+    with get_connection() as connection:
+        usage_count = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM farm_input_logs WHERE input_catalog_id = ?",
+                (input_catalog_id,),
+            ).fetchone()[0]
+        )
+        if usage_count > 0:
+            connection.execute(
+                "UPDATE input_catalog SET is_active = 0 WHERE input_catalog_id = ?",
+                (input_catalog_id,),
+            )
+            connection.commit()
+            logger.info("Deactivated input catalog entry id=%s because usage_count=%s", input_catalog_id, usage_count)
+            return "deactivated"
+
+        connection.execute("DELETE FROM input_catalog WHERE input_catalog_id = ?", (input_catalog_id,))
+        connection.commit()
+        logger.info("Deleted unused input catalog entry id=%s", input_catalog_id)
+        return "deleted"
 
 
 def summarise_buyer_criteria(notes: str | None) -> str:
@@ -480,16 +630,20 @@ def get_input_logs_for_pledge(farm_id: int, pledge_id: int) -> list[dict[str, An
     query = """
         SELECT
             fil.input_log_id,
-            fil.input_type,
-            fil.product_name,
-            fil.brand_name,
-            fil.application_method,
+            fil.input_catalog_id,
+            COALESCE(ic.input_category, fil.input_type) AS input_type,
+            COALESCE(ic.product_name, fil.product_name) AS product_name,
+            COALESCE(ic.brand_name, fil.brand_name) AS brand_name,
+            COALESCE(ic.application_method, fil.application_method) AS application_method,
+            ic.compliance_tag,
             fil.quantity,
             fil.unit,
             fil.log_date,
             fil.notes,
             fp.crop_type
         FROM farm_input_logs AS fil
+        LEFT JOIN input_catalog AS ic
+            ON fil.input_catalog_id = ic.input_catalog_id
         INNER JOIN farmer_pledges AS fp
             ON fil.farmer_pledge_id = fp.farmer_pledge_id
         WHERE fil.farmer_account_id = ?
@@ -518,17 +672,21 @@ def get_input_logs_for_pledge_ids(pledge_ids: list[int]) -> dict[int, list[dict[
     placeholders = ", ".join("?" for _ in pledge_ids)
     query = f"""
         SELECT
-            input_log_id,
-            farmer_pledge_id,
-            input_type,
-            product_name,
-            brand_name,
-            application_method,
-            quantity,
-            unit,
-            log_date,
-            notes
-        FROM farm_input_logs
+            fil.input_log_id,
+            fil.input_catalog_id,
+            fil.farmer_pledge_id,
+            COALESCE(ic.input_category, fil.input_type) AS input_type,
+            COALESCE(ic.product_name, fil.product_name) AS product_name,
+            COALESCE(ic.brand_name, fil.brand_name) AS brand_name,
+            COALESCE(ic.application_method, fil.application_method) AS application_method,
+            ic.compliance_tag,
+            fil.quantity,
+            fil.unit,
+            fil.log_date,
+            fil.notes
+        FROM farm_input_logs AS fil
+        LEFT JOIN input_catalog AS ic
+            ON fil.input_catalog_id = ic.input_catalog_id
         WHERE farmer_pledge_id IN ({placeholders})
         ORDER BY log_date DESC, input_log_id DESC
     """

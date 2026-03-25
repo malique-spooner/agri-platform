@@ -12,7 +12,7 @@ def criterion_label(criterion: dict[str, Any]) -> str:
         parts.append(str(criterion["product_name"]).strip())
     if criterion.get("brand_name"):
         parts.append(str(criterion["brand_name"]).strip())
-    return " / ".join([part for part in parts if part])
+    return " · ".join([part for part in parts if part])
 
 
 def log_matches_criterion(log: dict[str, Any], criterion: dict[str, Any]) -> bool:
@@ -44,6 +44,11 @@ def enrich_eligible_pledges_with_criteria(
             for criterion in required_inputs
             if not any(log_matches_criterion(log, criterion) for log in input_logs)
         ]
+        matched_required = [
+            criterion_label(criterion)
+            for criterion in required_inputs
+            if any(log_matches_criterion(log, criterion) for log in input_logs)
+        ]
         blocked_matches = [
             criterion_label(criterion)
             for criterion in blocked_inputs
@@ -68,6 +73,7 @@ def enrich_eligible_pledges_with_criteria(
                 **pledge,
                 "input_logs": input_logs,
                 "recent_inputs": recent_inputs,
+                "matched_required": matched_required,
                 "missing_required": missing_required,
                 "blocked_matches": blocked_matches,
                 "criteria_status": criteria_status,

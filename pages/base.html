@@ -4,14 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Agri Platform{% endblock %}</title>
+    <meta name="theme-color" content="#eef2f7">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    {% include "reusable/navbar.html" %}
-    <main>
+    <div class="app-shell">
+        <div class="app-atmosphere" aria-hidden="true"></div>
+        {% include "reusable/navbar.html" %}
+        <main class="app-main">
         {% block content %}{% endblock %}
-    </main>
+        </main>
+        <footer class="app-footer">
+            <p class="app-footer__brand" data-brand-field="name">Malique's Farm</p>
+            <p class="app-footer__note" data-brand-field="footer_note">
+                Malique's Farm manages buyer demand, farm visibility, and allocation assembly in one operating surface.
+            </p>
+        </footer>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const response = await fetch("{{ url_for('static', filename='brand/atlas_harvest.json') }}");
+            if (!response.ok) {
+                return;
+            }
+
+            const brand = await response.json();
+            const titleElement = document.querySelector("title");
+            if (titleElement && !titleElement.textContent.includes(brand.name)) {
+                titleElement.textContent = `${titleElement.textContent} | ${brand.name}`;
+            }
+
+            document.querySelectorAll("[data-brand-field='name']").forEach((element) => {
+                element.textContent = brand.name;
+            });
+            document.querySelectorAll("[data-brand-field='descriptor']").forEach((element) => {
+                element.textContent = brand.descriptor;
+            });
+            document.querySelectorAll("[data-brand-field='kicker']").forEach((element) => {
+                element.textContent = brand.product_shell.kicker;
+            });
+            document.querySelectorAll("[data-brand-field='footer_note']").forEach((element) => {
+                element.textContent = brand.product_shell.footer_note;
+            });
+        } catch (error) {
+            console.warn("Brand manifest could not be loaded.", error);
+        }
+    });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

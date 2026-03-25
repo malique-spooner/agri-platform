@@ -1,0 +1,197 @@
+Brand Guidelines
+Malique's Farm
+
+1. Brand Overview
+Malique's Farm is the operating brand used by the aggregator inside the agricultural coordination platform. The brand should feel calm, premium, precise, and trusted. It sits between fragmented farm supply and organised buyer demand, so the interface should communicate control, visibility, and quiet confidence rather than energy or noise.
+
+Brand role:
+- Coordinates supply across many farms
+- Reviews buyer requirements and compliance signals
+- Builds and confirms allocation batches
+- Maintains trust between upstream production and downstream procurement
+
+Brand personality:
+- Clear
+- Assured
+- Analytical
+- Modern
+- Human, but restrained
+
+2. Brand Positioning
+Malique's Farm is not a farming marketplace brand and not a generic admin dashboard. It should feel like an operating system for agricultural coordination teams.
+
+Positioning statement:
+Malique's Farm gives aggregators a clear control layer for coordinating agricultural supply, reviewing compliance signals, and assembling reliable buyer fulfilment batches.
+
+Core promise:
+Bring fragmented supply into one readable operating view.
+
+3. Visual Direction
+The visual style should feel closer to a polished Apple-style operations interface than to a rustic agriculture website.
+
+Visual principles:
+- Clean hierarchy over dense decoration
+- Frosted surfaces and soft depth
+- Precise spacing and generous white space
+- Calm neutral base with one agricultural accent family
+- Subtle gradients, not flat blocks
+- Rounded corners with disciplined repetition
+
+4. Logo System
+Primary name:
+Malique's Farm
+
+Internal descriptor:
+Coordination Console
+
+Logo concept:
+The mark combines a horizon line and a parcel grid, suggesting mapped supply, field structure, and routing. The wordmark should be minimal and editorial rather than playful.
+
+Logo usage:
+- Use the full wordmark in navigation and page chrome
+- Use the mark alone for compact placements or future favicon/app icon use
+- Keep clear space equal to at least the logo height around the mark
+
+5. Colour System
+Primary background:
+- Mist: #EEF2F7
+
+Surface:
+- Cloud White: #F9FBFD
+- Frost Glass: rgba(255, 255, 255, 0.72)
+
+Primary text:
+- Ink: #0F1724
+
+Secondary text:
+- Slate: #5F6C7B
+
+Hairline and borders:
+- Glass Line: rgba(148, 163, 184, 0.28)
+
+Brand accent:
+- Orchard Green: #2F6E5B
+- Deep Orchard: #234E41
+- Sage Signal: #8FB8A7
+
+Support accent:
+- Sky Tint: #B9D7F2
+- Wheat Tint: #E8D7AA
+- Rose Alert: #D98A88
+
+Status colours:
+- Not started: Wheat Tint / deep gold text
+- In progress: Sage Signal / deep orchard text
+- Completed: Orchard Green / white text
+- Error or blocked: Rose Alert / deep red text
+
+6. Typography
+Primary type stack:
+- -apple-system
+- BlinkMacSystemFont
+- "SF Pro Display"
+- "SF Pro Text"
+- "Helvetica Neue"
+- sans-serif
+
+Usage guidance:
+- Large headings should feel editorial and tight
+- Metadata should be lighter and smaller
+- Avoid loud all-caps headings except for tiny labels
+- Use numeric emphasis for quantities and dates
+
+7. Interface Components
+Navigation:
+- Frosted top bar
+- Left-aligned brand
+- Small descriptor below or beside the name
+- Minimal navigation links
+
+Primary page layout:
+- Soft atmospheric background
+- One clear page header
+- Layered cards and tables
+- Sticky or anchored summary panels where useful
+
+Tables:
+- Compact rows
+- Light dividers
+- Stronger hover state than border state
+- Rounded container rather than boxed individual cells
+
+Cards:
+- Rounded 20-28px corners
+- Glass or white surface
+- Thin borders
+- Soft shadow, never heavy drop shadows
+
+Progress bars:
+- Submitted quantity shown in the strongest brand green
+- Staged quantity shown in a lighter sage
+- Remaining quantity shown as a pale neutral track
+
+8. Illustration and Imagery
+Photography is not required for Version 0. Use lightweight vector assets instead.
+
+Preferred imagery:
+- Abstract map grids
+- Parcel lines
+- Horizon shapes
+- Soft radial colour blooms
+
+Avoid:
+- Literal stock photos of farms
+- Cartoon farm icons
+- Overly rustic visual motifs
+
+9. Voice and UI Copy
+Voice:
+- Direct
+- Calm
+- Operational
+- Specific
+
+Good examples:
+- Review eligible farms
+- Stage for submission
+- Remaining demand
+- Matching crop offers
+
+Avoid:
+- Marketing language
+- Exclamation-heavy copy
+- Vague labels like “Manage stuff”
+
+10. Product Application
+Homepage:
+- Feels like the daily work queue for the aggregator
+- Emphasise pending demand and clarity of next action
+
+Farm directory:
+- Feels like a shortlist workspace
+- Scannable and compact
+
+Allocation builder:
+- Feels like a control room
+- Strong criteria visibility
+- Clear difference between staged and submitted quantities
+
+11. Asset Requirements for Version 0
+Required assets:
+- Primary logo mark SVG
+- Wordmark SVG
+- Subtle background grid or glow SVG
+- Brand manifest JSON for reusable metadata and future theming
+
+12. Brand Manifest Data to Keep in JSON
+The JSON should include:
+- brand name
+- descriptor
+- mission
+- primary colours
+- status labels
+- navigation labels
+- short copy fragments for shell text
+
+13. Implementation Note
+The current site should use Malique's Farm as the aggregator-facing brand. This does not change the project name of the repository; it changes the product identity experienced by the user inside the interface.

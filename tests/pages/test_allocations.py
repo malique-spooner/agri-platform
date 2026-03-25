@@ -11,7 +11,6 @@ def test_build_allocation_page_returns_success(client):
 
     assert response.status_code == 200
     assert b"Build Allocation" in response.data
-    assert b"Buyer Criteria Summary" in response.data
     assert b"Staged For Submission" in response.data
     assert b"Submitted:" in response.data
     assert b"Staged:" in response.data
@@ -20,6 +19,9 @@ def test_build_allocation_page_returns_success(client):
     assert b"Export buyer summary" in response.data
     assert b"Export farm summary" in response.data
     assert b"Matching Crop Offers" in response.data
+    assert b"Required" in response.data
+    assert b"Blocked" in response.data
+    assert b'Hide ineligible crop offers' in response.data
 
 
 def test_build_allocation_page_filters_farms_to_matching_crop(client, monkeypatch):
@@ -68,13 +70,15 @@ def test_build_allocation_page_filters_farms_to_matching_crop(client, monkeypatc
     )
     monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: []})
 
-    response = client.get("/buyer-pledges/1/allocation")
+    response = client.get("/buyer-pledges/1/allocation?hide_ineligible=0")
 
     assert response.status_code == 200
     assert b"Riverbend Farm" in response.data
     assert b"Beans" in response.data
-    assert b"Buyer Rule Check" in response.data
+    assert b"Required" in response.data
+    assert b"Blocked" in response.data
     assert b"Hide ineligible crop offers" in response.data
+    assert b"Crop history" in response.data
 
 
 def test_build_allocation_page_adds_suggested_quantity_to_draft(client, monkeypatch):
@@ -145,15 +149,16 @@ def test_build_allocation_page_adds_suggested_quantity_to_draft(client, monkeypa
         data={
             "action": "add",
             "selected_offer_id": "11",
+            "selected_quantity_kg": "275",
         },
     )
 
     assert response.status_code == 200
     assert b"Submitted: 200 kg" in response.data
-    assert b"Staged: 400.0 kg" in response.data
-    assert b"Remaining after submit: 600.0 kg" in response.data
+    assert b"Staged: 275.0 kg" in response.data
+    assert b"Remaining after submit: 725.0 kg" in response.data
     assert b"Riverbend Farm" in response.data
-    assert b"Added to draft batch." in response.data
+    assert b"Staged for submission." in response.data
 
 
 def test_build_allocation_page_renders_validation_error_for_excess_total(client, monkeypatch):
@@ -268,10 +273,10 @@ def test_build_allocation_page_shows_blocked_crop_offer_as_not_selectable(client
         },
     )
 
-    response = client.get("/buyer-pledges/1/allocation")
+    response = client.get("/buyer-pledges/1/allocation?hide_ineligible=0")
 
     assert response.status_code == 200
-    assert b"Contains buyer-blocked input" in response.data
+    assert b"Blocked" in response.data
     assert b"disabled" in response.data
 
 
@@ -423,10 +428,10 @@ def test_build_allocation_page_submit_writes_allocations_and_refreshes_state(cli
     assert submit_response.status_code == 200
     assert persisted["buyer_pledge_id"] == 1
     assert len(persisted["selected_rows"]) == 1
-    assert b"Allocation submitted to the SQLite database" in submit_response.data
+    assert b"Allocation submitted." in submit_response.data
     assert b"Remaining Demand" in submit_response.data
     assert b"600 kg" in submit_response.data
-    assert b"No farm contributions are currently staged for submission." in submit_response.data
+    assert b"No staged offers." in submit_response.data
 
 
 def test_build_allocation_page_export_buttons_render_placeholder_messages(client, monkeypatch):

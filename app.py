@@ -1,17 +1,21 @@
 """Minimal Flask application for the agricultural coordination prototype."""
 
+from datetime import date, timedelta
 import logging
 import os
+from types import SimpleNamespace
 from typing import Any
 
 from flask import Flask, abort, redirect, render_template, request, session, url_for
 
+from database.generate_data import generate_dataset
 from logic.allocation_logic import (
     build_draft_allocation,
     enrich_eligible_pledges_with_criteria,
     suggested_allocation_quantity,
 )
 from logic.database_helpers import (
+    create_input_catalog_entry,
     get_all_buyer_pledges,
     get_all_farms,
     get_buyer_pledge_by_id,
@@ -20,9 +24,11 @@ from logic.database_helpers import (
     get_farmer_pledge_by_id,
     get_farmer_pledges_for_crop,
     get_farmer_pledges_for_farm,
+    get_input_catalog_entries,
     get_input_logs_for_pledge,
     get_input_logs_for_pledge_ids,
     persist_confirmed_allocation,
+    remove_input_catalog_entry,
 )
 from logic.logging_config import configure_logging
 
@@ -165,6 +171,69 @@ def filter_and_sort_farms(
     return sorted(filtered_farms, key=lambda farm: farm_sort_key(farm, sort_by))
 
 
+def allocation_offer_sort_key(pledge: dict[str, Any], sort_by: str) -> tuple[Any, ...]:
+    """Return a stable sort key for allocation offers."""
+    availability = pledge.get("available_from_date") or "9999-12-31"
+    price = float(pledge.get("asking_price_per_kg") or 999)
+    quantity = -float(pledge.get("available_quantity_kg") or 0)
+    status_priority = {"eligible": 0, "review": 1, "blocked": 2}
+    base = (
+        status_priority.get(str(pledge.get("criteria_status", "")), 9),
+        availability,
+        quantity,
+        price,
+        str(pledge.get("farm_name", "")).lower(),
+    )
+    if sort_by == "soonest":
+        return (availability, status_priority.get(str(pledge.get("criteria_status", "")), 9), quantity)
+    if sort_by == "quantity":
+        return (quantity, availability, price)
+    if sort_by == "price":
+        return (price, availability, quantity)
+    if sort_by == "farm":
+        return (str(pledge.get("farm_name", "")).lower(), availability)
+    return base
+
+
+def filter_and_sort_allocation_offers(
+    pledges: list[dict[str, Any]],
+    *,
+    country_filter: str,
+    availability_filter: str,
+    rule_filter: str,
+    sort_by: str,
+    hide_ineligible: bool,
+) -> list[dict[str, Any]]:
+    """Apply server-side filters to allocation offers."""
+    today = date.today()
+    filtered = pledges
+
+    if country_filter:
+        filtered = [pledge for pledge in filtered if str(pledge.get("region", "")) == country_filter]
+
+    if availability_filter == "now":
+        filtered = [
+            pledge
+            for pledge in filtered
+            if not pledge.get("available_from_date") or str(pledge.get("available_from_date")) <= today.isoformat()
+        ]
+    elif availability_filter == "soon":
+        filtered = [
+            pledge
+            for pledge in filtered
+            if pledge.get("available_from_date")
+            and str(pledge.get("available_from_date")) <= (today + timedelta(days=14)).isoformat()
+        ]
+
+    if rule_filter:
+        filtered = [pledge for pledge in filtered if str(pledge.get("criteria_status", "")) == rule_filter]
+
+    if hide_ineligible:
+        filtered = [pledge for pledge in filtered if pledge.get("is_selectable", True)]
+
+    return sorted(filtered, key=lambda pledge: allocation_offer_sort_key(pledge, sort_by))
+
+
 def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder="pages")
@@ -243,7 +312,12 @@ def create_app() -> Flask:
             eligible_pledges=raw_eligible_pledges,
             logs_by_pledge_id=logs_by_pledge_id,
         )
-        hide_ineligible = request.args.get("hide_ineligible", "").strip() == "1"
+        hide_ineligible_arg = request.args.get("hide_ineligible", "").strip()
+        hide_ineligible = hide_ineligible_arg != "0"
+        country_filter = request.args.get("country", "").strip()
+        availability_filter = request.args.get("availability", "").strip()
+        rule_filter = request.args.get("rule", "").strip()
+        sort_by = request.args.get("sort", "priority").strip() or "priority"
         draft_session_key = f"draft_allocations:{pledge_id}"
         stored_quantities = {
             int(key): str(value)
@@ -256,17 +330,25 @@ def create_app() -> Flask:
         )
         submission_message = None
         if request.args.get("submitted") == "1":
-            submission_message = "Allocation submitted to the SQLite database and the remaining demand has been refreshed."
+            submission_message = "Allocation submitted."
 
         if request.method == "POST":
             action = request.form.get("action", "").strip()
             post_hide_ineligible = request.form.get("hide_ineligible", "").strip() == "1"
             hide_ineligible = post_hide_ineligible
+            country_filter = request.form.get("country", "").strip()
+            availability_filter = request.form.get("availability", "").strip()
+            rule_filter = request.form.get("rule", "").strip()
+            sort_by = request.form.get("sort", "priority").strip() or "priority"
             logger.info(
-                "Allocation builder action=%s for buyer pledge id=%s hide_ineligible=%s",
+                "Allocation builder action=%s for buyer pledge id=%s hide_ineligible=%s country=%r availability=%r rule=%r sort=%r",
                 action,
                 pledge_id,
                 hide_ineligible,
+                country_filter,
+                availability_filter,
+                rule_filter,
+                sort_by,
             )
 
             if action == "add":
@@ -278,18 +360,35 @@ def create_app() -> Flask:
                         None,
                     )
                     if selected_offer is not None:
+                        requested_quantity_raw = request.form.get("selected_quantity_kg", "").strip()
                         auto_quantity = suggested_allocation_quantity(
                             buyer_remaining_kg=float(draft_allocation["remaining_after_kg"]),
                             available_quantity_kg=float(selected_offer.get("available_quantity_kg") or 0),
                         )
-                        if auto_quantity > 0:
-                            stored_quantities[offer_id] = str(int(auto_quantity) if auto_quantity.is_integer() else auto_quantity)
-                            submission_message = "Added to draft batch."
+                        selected_quantity = auto_quantity
+                        if requested_quantity_raw:
+                            try:
+                                selected_quantity = float(requested_quantity_raw)
+                            except ValueError:
+                                selected_quantity = 0
+
+                        max_allowed_quantity = min(
+                            float(draft_allocation["remaining_after_kg"]),
+                            float(selected_offer.get("available_quantity_kg") or 0),
+                        )
+                        if selected_quantity > max_allowed_quantity:
+                            selected_quantity = max_allowed_quantity
+
+                        if selected_quantity > 0:
+                            stored_quantities[offer_id] = str(
+                                int(selected_quantity) if float(selected_quantity).is_integer() else selected_quantity
+                            )
+                            submission_message = "Staged for submission."
                             logger.info(
                                 "Staged farmer pledge id=%s for buyer pledge id=%s at %.2f kg",
                                 offer_id,
                                 pledge_id,
-                                auto_quantity,
+                                selected_quantity,
                             )
                         else:
                             submission_message = "No remaining demand is left to allocate for this buyer pledge."
@@ -325,6 +424,10 @@ def create_app() -> Flask:
                             "build_allocation",
                             pledge_id=pledge_id,
                             hide_ineligible="1" if hide_ineligible else None,
+                            country=country_filter or None,
+                            availability=availability_filter or None,
+                            rule=rule_filter or None,
+                            sort=sort_by if sort_by != "priority" else None,
                             submitted="1",
                         )
                     )
@@ -361,11 +464,15 @@ def create_app() -> Flask:
                 available_quantity_kg=float(pledge.get("available_quantity_kg") or 0),
             )
 
-        visible_pledges = [
-            pledge
-            for pledge in eligible_pledges
-            if not hide_ineligible or pledge.get("is_selectable", True)
-        ]
+        visible_pledges = filter_and_sort_allocation_offers(
+            eligible_pledges,
+            country_filter=country_filter,
+            availability_filter=availability_filter,
+            rule_filter=rule_filter,
+            sort_by=sort_by,
+            hide_ineligible=hide_ineligible,
+        )
+        country_options = sorted({str(pledge.get("region", "")) for pledge in eligible_pledges if pledge.get("region")})
 
         return render_template(
             "build_allocation.html",
@@ -373,6 +480,11 @@ def create_app() -> Flask:
             eligible_pledges=visible_pledges,
             draft_allocation=draft_allocation,
             hide_ineligible=hide_ineligible,
+            country_filter=country_filter,
+            availability_filter=availability_filter,
+            rule_filter=rule_filter,
+            sort_by=sort_by,
+            country_options=country_options,
             submission_message=submission_message,
             active_database_path=str(get_database_path()),
         )
@@ -410,6 +522,100 @@ def create_app() -> Flask:
             crop_filter=crop_filter,
             availability_filter=availability_filter,
             sort_by=sort_by,
+        )
+
+    @app.route("/settings", methods=["GET", "POST"])
+    def settings():
+        """Render and manage the standardized input catalog."""
+        if request.method == "POST":
+            action = request.form.get("action", "").strip()
+            category_filter = request.form.get("category_filter", "").strip()
+            compliance_filter = request.form.get("compliance_filter", "").strip()
+            include_inactive = request.form.get("include_inactive", "").strip() == "1"
+            logger.info(
+                "Settings action=%s category=%r compliance=%r include_inactive=%s",
+                action,
+                category_filter,
+                compliance_filter,
+                include_inactive,
+            )
+            message = ""
+
+            if action == "add":
+                input_category = request.form.get("input_category", "").strip()
+                product_name = request.form.get("product_name", "").strip()
+                application_method = request.form.get("application_method", "").strip()
+                default_unit = request.form.get("default_unit", "").strip()
+                compliance_tag = request.form.get("compliance_tag", "standard").strip()
+                if input_category and product_name and application_method and default_unit:
+                    create_input_catalog_entry(
+                        input_category=input_category,
+                        product_name=product_name,
+                        brand_name=request.form.get("brand_name", "").strip() or None,
+                        application_method=application_method,
+                        default_unit=default_unit,
+                        compliance_tag=compliance_tag,
+                        notes=request.form.get("notes", "").strip() or None,
+                    )
+                    message = "Input catalog entry added."
+                else:
+                    message = "Add a category, product name, method, and default unit."
+            elif action == "remove":
+                selected_id = request.form.get("input_catalog_id", "").strip()
+                if selected_id.isdigit():
+                    removal_result = remove_input_catalog_entry(int(selected_id))
+                    message = (
+                        "Input removed from the catalog."
+                        if removal_result == "deleted"
+                        else "Input is already referenced, so it was marked inactive instead."
+                    )
+            elif action == "reset_database":
+                logger.info("Resetting demo database from settings page")
+                generate_dataset(
+                    SimpleNamespace(
+                        buyers=20,
+                        buyer_pledges_total=20,
+                        farmers=45,
+                        max_buyer_pledges=2,
+                        max_farmer_pledges=3,
+                        max_input_logs=5,
+                        seed=20260324,
+                        database_path=get_database_path(),
+                    )
+                )
+                session.clear()
+                message = "Demo database reset successfully."
+
+            return redirect(
+                url_for(
+                    "settings",
+                    category=category_filter,
+                    compliance=compliance_filter,
+                    include_inactive="1" if include_inactive else None,
+                    message=message or None,
+                )
+            )
+
+        category_filter = request.args.get("category", "").strip()
+        compliance_filter = request.args.get("compliance", "").strip()
+        include_inactive = request.args.get("include_inactive", "").strip() == "1"
+        catalog_entries = get_input_catalog_entries(
+            category_filter=category_filter,
+            compliance_filter=compliance_filter,
+            include_inactive=include_inactive,
+        )
+        category_options = sorted({entry["input_category"] for entry in get_input_catalog_entries(include_inactive=True)})
+        compliance_options = ["standard", "organic", "restricted"]
+        logger.info("Rendering settings page with %s catalog entr(y/ies)", len(catalog_entries))
+        return render_template(
+            "settings.html",
+            catalog_entries=catalog_entries,
+            category_filter=category_filter,
+            compliance_filter=compliance_filter,
+            include_inactive=include_inactive,
+            category_options=category_options,
+            compliance_options=compliance_options,
+            page_message=request.args.get("message", "").strip(),
         )
 
     @app.route("/farms/<int:farm_id>")

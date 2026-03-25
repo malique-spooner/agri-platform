@@ -1,5 +1,6 @@
 """Database structure and generated data tests."""
 
+from datetime import date
 import json
 import sqlite3
 
@@ -7,36 +8,25 @@ from logic.database_helpers import get_all_buyer_pledges, get_all_farms, persist
 
 SUPPORTED_AFRICAN_COUNTRIES = {
     "Kenya",
-    "Tanzania",
     "Uganda",
-    "Rwanda",
-    "Malawi",
     "Zambia",
-    "Zimbabwe",
 }
 
 COUNTRY_COORDINATE_RANGES = {
     "Kenya": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
-    "Tanzania": {"lat": (-11.75, -0.98), "lon": (29.34, 40.44)},
     "Uganda": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
-    "Rwanda": {"lat": (-2.84, -1.05), "lon": (28.86, 30.90)},
-    "Malawi": {"lat": (-17.13, -9.37), "lon": (32.67, 35.92)},
     "Zambia": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
-    "Zimbabwe": {"lat": (-22.43, -15.61), "lon": (25.24, 33.06)},
 }
 
 COUNTRY_COUNTIES = {
     "Kenya": {"Nakuru", "Kiambu", "Meru", "Machakos"},
-    "Tanzania": {"Arusha", "Morogoro", "Mbeya", "Dodoma"},
     "Uganda": {"Wakiso", "Mbarara", "Gulu", "Mbale"},
-    "Rwanda": {"Eastern Province", "Northern Province", "Southern Province"},
-    "Malawi": {"Lilongwe", "Mzuzu", "Blantyre", "Zomba"},
     "Zambia": {"Lusaka", "Central", "Copperbelt", "Eastern"},
-    "Zimbabwe": {"Mashonaland East", "Midlands", "Manicaland", "Masvingo"},
 }
 
 
 EXPECTED_TABLES = {
+    "input_catalog",
     "buyer_accounts",
     "buyer_pledges",
     "farmer_accounts",
@@ -68,6 +58,14 @@ def test_generated_data_loads_correctly(test_database_path):
 
     assert buyer_pledges
     assert len(farms) == 12
+
+
+def test_input_catalog_is_seeded(test_database_path):
+    """The normalized input catalog should be populated for settings and matching logic."""
+    with sqlite3.connect(test_database_path) as connection:
+        entry_count = connection.execute("SELECT COUNT(*) FROM input_catalog").fetchone()[0]
+
+    assert entry_count >= 8
 
 
 def test_foreign_keys_are_valid(test_database_path):
@@ -208,6 +206,16 @@ def test_generated_data_contains_optional_null_fields(test_database_path):
     assert input_log_pledge_nulls > 0
 
 
+def test_farm_input_logs_reference_the_normalized_catalog(test_database_path):
+    """Every generated input log should point back to a standardized catalog entry."""
+    with sqlite3.connect(test_database_path) as connection:
+        missing_links = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE input_catalog_id IS NULL"
+        ).fetchone()[0]
+
+    assert missing_links == 0
+
+
 def test_generated_farm_coordinates_are_in_supported_african_countries(test_database_path):
     """Generated farms should belong to supported African countries and valid coordinate ranges."""
     with sqlite3.connect(test_database_path) as connection:
@@ -224,6 +232,14 @@ def test_generated_farm_coordinates_are_in_supported_african_countries(test_data
         bounds = COUNTRY_COORDINATE_RANGES[region]
         assert bounds["lat"][0] <= latitude <= bounds["lat"][1]
         assert bounds["lon"][0] <= longitude <= bounds["lon"][1]
+
+
+def test_farm_directory_dataset_only_uses_three_supported_countries(test_database_path):
+    """The demo dataset should stay inside the configured three-country operating region."""
+    farms = get_all_farms()
+
+    assert farms
+    assert {farm["region"] for farm in farms} == SUPPORTED_AFRICAN_COUNTRIES
 
 
 def test_buyer_pledge_notes_are_valid_json(test_database_path):
@@ -267,6 +283,42 @@ def test_deadlines_do_not_precede_creation_dates(test_database_path):
 
     assert invalid_buyer_dates == 0
     assert invalid_farmer_dates == 0
+
+
+def test_generated_dates_stay_close_to_today_for_demo_use(test_database_path):
+    """Deadlines, availability windows, and logs should stay near the current operating period."""
+    today = date.today().isoformat()
+    with sqlite3.connect(test_database_path) as connection:
+        distant_buyer_dates = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM buyer_pledges
+            WHERE needed_by_date IS NOT NULL
+              AND ABS(julianday(needed_by_date) - julianday(?)) > 90
+            """,
+            (today,),
+        ).fetchone()[0]
+        distant_farmer_dates = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM farmer_pledges
+            WHERE available_from_date IS NOT NULL
+              AND ABS(julianday(available_from_date) - julianday(?)) > 90
+            """,
+            (today,),
+        ).fetchone()[0]
+        future_logs = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM farm_input_logs
+            WHERE date(log_date) > date(?)
+            """,
+            (today,),
+        ).fetchone()[0]
+
+    assert distant_buyer_dates == 0
+    assert distant_farmer_dates == 0
+    assert future_logs == 0
 
 
 def test_input_logs_reference_matching_farmer_when_pledge_is_present(test_database_path):

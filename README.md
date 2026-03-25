@@ -53,7 +53,9 @@ Key folders:
 The project uses Python's standard `logging` library for runtime logging.
 
 - Development documentation is kept in `docs/dev_log.txt`.
-- Runtime application logs are written separately to `logs/app.log`.
+- Runtime application logs are written to one file: `logs/app.log`.
+- Rotated sibling files such as `app.log.1` are no longer part of the logging setup.
+- If older rotated files exist from previous runs, they should be merged back into `app.log` and removed.
 
 ## Main Routes
 
@@ -62,3 +64,4 @@ The project uses Python's standard `logging` library for runtime logging.
 - `/farms` farm directory
 - `/farms/<farm_id>` farm profile
 - `/farms/<farm_id>/pledges/<pledge_id>` crop-offer detail with input history
+- `/settings` input catalog management and demo-database reset

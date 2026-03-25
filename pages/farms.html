@@ -8,6 +8,25 @@
     <p class="lede">Scan farms quickly here, then open the profile page when you need pledge-level production and input details.</p>
 </section>
 
+<section class="spotlight-ribbon">
+    <article class="spotlight-card">
+        <p class="spotlight-label">Visible farms</p>
+        <p class="spotlight-value">{{ farms|length }}</p>
+    </article>
+    <article class="spotlight-card">
+        <p class="spotlight-label">Active offers</p>
+        <p class="spotlight-value">{{ farms|sum(attribute='pledge_count') }}</p>
+    </article>
+    <article class="spotlight-card">
+        <p class="spotlight-label">Supply on hand</p>
+        <p class="spotlight-value">{{ farms|sum(attribute='total_supply_kg')|int }} kg</p>
+    </article>
+    <article class="spotlight-card spotlight-card--wide">
+        <p class="spotlight-label">How to use it</p>
+        <p class="spotlight-copy">Shortlist by crop and availability, then open a profile for maps, production offers, and crop-specific history.</p>
+    </article>
+</section>
+
 <section class="filter-panel">
     <form class="filter-form" method="get" action="{{ url_for('farms') }}">
         <input
@@ -57,14 +76,26 @@
                 {% for farm in farms %}
                 <tr>
                     <td>
-                        <strong>{{ farm.farm_name }}</strong>
-                        <div class="table-subtle">{{ farm.farmer_name }}</div>
+                        <div class="entity-lockup">
+                            <span class="entity-badge">{{ farm.farm_name[:2]|upper }}</span>
+                            <span class="entity-lockup__text">
+                                <strong class="row-link">{{ farm.farm_name }}</strong>
+                                <span class="entity-meta">{{ farm.farmer_name }}</span>
+                            </span>
+                        </div>
                     </td>
                     <td>{{ farm.county or "County not provided" }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region or "Region not provided" }}</td>
-                    <td>{{ farm.pledge_count }}</td>
+                    <td><span class="metric-pill">{{ farm.pledge_count }}</span></td>
                     <td>
                         {% if farm.crop_types %}
-                        {{ farm.crop_types|join(", ") }}
+                        <div class="chip-list">
+                            {% for crop in farm.crop_types[:3] %}
+                            <span class="crop-chip crop-chip--soft">{{ crop }}</span>
+                            {% endfor %}
+                            {% if farm.crop_types|length > 3 %}
+                            <span class="mini-chip">+{{ (farm.crop_types|length) - 3 }}</span>
+                            {% endif %}
+                        </div>
                         {% else %}
                         No active crops
                         {% endif %}

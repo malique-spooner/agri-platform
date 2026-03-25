@@ -17,4 +17,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-ra --strict-config --strict-markers"
+python_files = ["test_*.py"]
+addopts = "-ra --strict-config --strict-markers --maxfail=1"
+
+[tool.coverage.run]
+source = ["app", "database", "logic"]
+branch = true

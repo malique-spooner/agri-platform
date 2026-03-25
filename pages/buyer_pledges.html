@@ -10,6 +10,25 @@
     </p>
 </section>
 
+<section class="spotlight-ribbon">
+    <article class="spotlight-card">
+        <p class="spotlight-label">Not started</p>
+        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'open')|list|length }}</p>
+    </article>
+    <article class="spotlight-card">
+        <p class="spotlight-label">In progress</p>
+        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'partial')|list|length }}</p>
+    </article>
+    <article class="spotlight-card">
+        <p class="spotlight-label">Completed</p>
+        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'fulfilled')|list|length }}</p>
+    </article>
+    <article class="spotlight-card spotlight-card--wide">
+        <p class="spotlight-label">Queue view</p>
+        <p class="spotlight-copy">Pick one pledge, review the buyer criteria, then move straight into the allocation builder when it is ready for action.</p>
+    </article>
+</section>
+
 <section class="filter-panel">
     <form class="filter-form" method="get" action="{{ url_for('buyer_pledges') }}">
         <input type="text" name="q" value="{{ search_term }}" placeholder="Search buyer or crop...">
@@ -43,8 +62,7 @@
                 <tr>
                     <th>Buyer</th>
                     <th>Crop</th>
-                    <th>Required</th>
-                    <th>Remaining</th>
+                    <th>Demand</th>
                     <th>Deadline</th>
                     <th>Status</th>
                     <th>Progress</th>
@@ -54,27 +72,30 @@
                 {% for pledge in pledges %}
                 <tr
                     class="queue-row {% if selected_pledge and pledge.buyer_pledge_id == selected_pledge.buyer_pledge_id %}queue-row--selected{% endif %}"
-                    data-select-url="{{ url_for('buyer_pledges', q=search_term, crop=crop_filter, status=status_filter, sort=sort_by, selected=pledge.buyer_pledge_id) }}"
+                    data-pledge-id="{{ pledge.buyer_pledge_id }}"
                     tabindex="0"
                     role="link"
                 >
                     <td>
-                        <span class="row-link">{{ pledge.organisation_name }}</span>
+                        <div class="entity-lockup">
+                            <span class="entity-badge">{{ pledge.organisation_name[:2]|upper }}</span>
+                            <span class="entity-lockup__text">
+                                <span class="row-link">{{ pledge.organisation_name }}</span>
+                                <span class="entity-meta">Pledge #{{ pledge.buyer_pledge_id }}</span>
+                            </span>
+                        </div>
                     </td>
-                    <td>{{ pledge.crop_type }}</td>
-                    <td>{{ pledge.quantity_kg }} kg</td>
-                    <td>{{ pledge.remaining_quantity_kg }} kg</td>
+                    <td><span class="crop-chip">{{ pledge.crop_type }}</span></td>
+                    <td>
+                        <strong>{{ pledge.quantity_kg }} kg</strong>
+                        <div class="table-subtle">{{ pledge.remaining_quantity_kg }} kg left</div>
+                    </td>
                     <td>{{ pledge.needed_by_date or "No deadline set" }}</td>
                     <td>
                         <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.display_status }}</span>
                     </td>
                     <td>
-                        <div class="queue-progress">
-                            <div class="progress-track" aria-label="Fulfilment progress">
-                                <span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%;"></span>
-                            </div>
-                            <span class="queue-progress__label">{{ pledge.fulfillment_percent }}%</span>
-                        </div>
+                        <span class="queue-progress__label queue-progress__label--solo">{{ pledge.fulfillment_percent }}%</span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -86,55 +107,92 @@
     </div>
 
     <aside class="info-card queue-panel">
+        <div id="pledge-data" data-pledges='{{ pledges|tojson|forceescape }}'></div>
         <h2>Selected Pledge</h2>
         {% if selected_pledge %}
         <div class="management-card__header queue-panel__header">
             <div>
-                <h3>{{ selected_pledge.organisation_name }}</h3>
-                <p class="management-card__crop">{{ selected_pledge.crop_type }}</p>
+                <h3 id="selected-organisation">{{ selected_pledge.organisation_name }}</h3>
             </div>
-            <span class="status-pill status-pill--{{ selected_pledge.pledge_status }}">{{ selected_pledge.display_status }}</span>
+            <span id="selected-status" class="status-pill status-pill--{{ selected_pledge.pledge_status }}">{{ selected_pledge.display_status }}</span>
+        </div>
+        <div class="mini-chip-row">
+            <span id="selected-pledge-id" class="mini-chip">Pledge #{{ selected_pledge.buyer_pledge_id }}</span>
+            <span id="selected-crop-chip" class="mini-chip">{{ selected_pledge.crop_type }}</span>
+            <span id="selected-priority" class="mini-chip">Priority {{ selected_pledge.deadline_state|replace('_', ' ')|title }}</span>
         </div>
         <div class="progress-block">
             <div class="progress-block__labels">
-                <span>{{ selected_pledge.fulfillment_percent }}% fulfilled</span>
-                <span>{{ selected_pledge.remaining_quantity_kg }} kg left</span>
+                <span id="selected-progress-text">{{ selected_pledge.fulfillment_percent }}% fulfilled</span>
+                <span id="selected-remaining-text">{{ selected_pledge.remaining_quantity_kg }} kg left</span>
             </div>
             <div class="progress-track" aria-label="Fulfilment progress">
-                <span class="progress-bar" style="width: {{ selected_pledge.fulfillment_percent }}%;"></span>
+                <span id="selected-progress-bar" class="progress-bar" style="width: {{ selected_pledge.fulfillment_percent }}%;"></span>
             </div>
         </div>
         <dl class="meta-list queue-panel__meta">
             <div>
                 <dt>Total Quantity</dt>
-                <dd>{{ selected_pledge.quantity_kg }} kg</dd>
+                <dd id="selected-total">{{ selected_pledge.quantity_kg }} kg</dd>
             </div>
             <div>
                 <dt>Allocated</dt>
-                <dd>{{ selected_pledge.allocated_quantity_kg }} kg</dd>
+                <dd id="selected-allocated">{{ selected_pledge.allocated_quantity_kg }} kg</dd>
             </div>
             <div>
                 <dt>Remaining</dt>
-                <dd>{{ selected_pledge.remaining_quantity_kg }} kg</dd>
+                <dd id="selected-remaining">{{ selected_pledge.remaining_quantity_kg }} kg</dd>
             </div>
             <div>
                 <dt>Deadline</dt>
-                <dd>{{ selected_pledge.needed_by_date or "No deadline set" }}</dd>
+                <dd id="selected-deadline">{{ selected_pledge.needed_by_date or "No deadline set" }}</dd>
             </div>
             <div>
                 <dt>Target Price</dt>
-                <dd>{{ selected_pledge.target_price_per_kg if selected_pledge.target_price_per_kg is not none else "TBC" }}</dd>
+                <dd id="selected-price">{{ selected_pledge.target_price_per_kg if selected_pledge.target_price_per_kg is not none else "TBC" }}</dd>
             </div>
             <div>
                 <dt>Priority State</dt>
-                <dd>{{ selected_pledge.deadline_state|replace('_', ' ')|title }}</dd>
+                <dd id="selected-priority-state">{{ selected_pledge.deadline_state|replace('_', ' ')|title }}</dd>
+            </div>
+            <div class="meta-list__wide">
+                <dt>Required</dt>
+                <dd>
+                    <ul id="selected-required" class="criteria-lines">
+                        {% if selected_pledge.criteria.required_inputs %}
+                            {% for item in selected_pledge.criteria.required_inputs %}
+                            <li>
+                                {{ item.input_type }}
+                                {% if item.product_name %} · {{ item.product_name }}{% endif %}
+                                {% if item.brand_name %} · {{ item.brand_name }}{% endif %}
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li>None</li>
+                        {% endif %}
+                    </ul>
+                </dd>
+            </div>
+            <div class="meta-list__wide">
+                <dt>Blocked</dt>
+                <dd>
+                    <ul id="selected-blocked" class="criteria-lines">
+                        {% if selected_pledge.criteria.blocked_inputs %}
+                            {% for item in selected_pledge.criteria.blocked_inputs %}
+                            <li>
+                                {{ item.input_type }}
+                                {% if item.product_name %} · {{ item.product_name }}{% endif %}
+                                {% if item.brand_name %} · {{ item.brand_name }}{% endif %}
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li>None</li>
+                        {% endif %}
+                    </ul>
+                </dd>
             </div>
         </dl>
-        <div class="queue-panel__notes">
-            <h3>Buyer Criteria</h3>
-            <p>{{ selected_pledge.criteria_summary }}</p>
-        </div>
-        <a class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
+        <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
         {% else %}
         <p class="empty-state">Select a buyer pledge from the table to review its details and next steps.</p>
         {% endif %}
@@ -144,19 +202,84 @@
 {% block extra_scripts %}
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    for (const row of document.querySelectorAll(".queue-row[data-select-url]")) {
-        const navigate = () => {
-            const url = row.dataset.selectUrl;
-            if (url) {
-                window.location.href = url;
-            }
-        };
+    const pledgeDataElement = document.getElementById("pledge-data");
+    const pledgeData = pledgeDataElement ? JSON.parse(pledgeDataElement.dataset.pledges || "[]") : [];
+    const pledgeById = new Map(pledgeData.map((pledge) => [String(pledge.buyer_pledge_id), pledge]));
+    const statusClasses = ["status-pill--open", "status-pill--partial", "status-pill--fulfilled"];
+    const formatCriterion = (item) => {
+        if (!item || typeof item !== "object") {
+            return "Unknown";
+        }
 
-        row.addEventListener("click", navigate);
+        return [item.input_type, item.product_name, item.brand_name]
+            .filter(Boolean)
+            .join(" · ");
+    };
+    const renderCriteriaList = (elementId, items) => {
+        const target = document.getElementById(elementId);
+        if (!target) {
+            return;
+        }
+
+        const values = Array.isArray(items) ? items : [];
+        target.innerHTML = "";
+
+        if (!values.length) {
+            const listItem = document.createElement("li");
+            listItem.textContent = "None";
+            target.appendChild(listItem);
+            return;
+        }
+
+        for (const item of values) {
+            const listItem = document.createElement("li");
+            listItem.textContent = formatCriterion(item);
+            target.appendChild(listItem);
+        }
+    };
+    const toTitle = (value) =>
+        String(value || "")
+            .replaceAll("_", " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+
+    const updateSelectedPledge = (pledgeId) => {
+        const pledge = pledgeById.get(String(pledgeId));
+        if (!pledge) {
+            return;
+        }
+
+        document.getElementById("selected-organisation").textContent = pledge.organisation_name;
+        document.getElementById("selected-status").textContent = pledge.display_status;
+        document.getElementById("selected-status").classList.remove(...statusClasses);
+        document.getElementById("selected-status").classList.add(`status-pill--${pledge.pledge_status}`);
+        document.getElementById("selected-pledge-id").textContent = `Pledge #${pledge.buyer_pledge_id}`;
+        document.getElementById("selected-crop-chip").textContent = pledge.crop_type;
+        document.getElementById("selected-priority").textContent = `Priority ${toTitle(pledge.deadline_state)}`;
+        document.getElementById("selected-progress-text").textContent = `${pledge.fulfillment_percent}% fulfilled`;
+        document.getElementById("selected-remaining-text").textContent = `${pledge.remaining_quantity_kg} kg left`;
+        document.getElementById("selected-progress-bar").style.width = `${pledge.fulfillment_percent}%`;
+        document.getElementById("selected-total").textContent = `${pledge.quantity_kg} kg`;
+        document.getElementById("selected-allocated").textContent = `${pledge.allocated_quantity_kg} kg`;
+        document.getElementById("selected-remaining").textContent = `${pledge.remaining_quantity_kg} kg`;
+        document.getElementById("selected-deadline").textContent = pledge.needed_by_date || "No deadline set";
+        document.getElementById("selected-price").textContent = pledge.target_price_per_kg ?? "TBC";
+        document.getElementById("selected-priority-state").textContent = toTitle(pledge.deadline_state);
+        renderCriteriaList("selected-required", pledge.criteria?.required_inputs);
+        renderCriteriaList("selected-blocked", pledge.criteria?.blocked_inputs);
+        document.getElementById("selected-allocation-link").href = `/buyer-pledges/${pledge.buyer_pledge_id}/allocation`;
+
+        for (const row of document.querySelectorAll(".queue-row")) {
+            row.classList.toggle("queue-row--selected", row.dataset.pledgeId === String(pledgeId));
+        }
+    };
+
+    for (const row of document.querySelectorAll(".queue-row[data-pledge-id]")) {
+        const select = () => updateSelectedPledge(row.dataset.pledgeId);
+        row.addEventListener("click", select);
         row.addEventListener("keydown", (event) => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                navigate();
+                select();
             }
         });
     }

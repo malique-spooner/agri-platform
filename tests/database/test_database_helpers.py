@@ -5,11 +5,14 @@ from __future__ import annotations
 import sqlite3
 
 from logic.database_helpers import (
+    create_input_catalog_entry,
     get_all_buyer_pledges,
     get_deadline_state,
     get_farmer_pledges_for_crop,
+    get_input_catalog_entries,
     get_input_logs_for_pledge_ids,
     parse_buyer_criteria,
+    remove_input_catalog_entry,
     summarise_buyer_criteria,
 )
 
@@ -101,3 +104,50 @@ def test_get_input_logs_for_pledge_ids_returns_logs_keyed_by_requested_ids(test_
     assert all(logs_by_pledge_id[pledge_id] for pledge_id in pledge_ids)
     for pledge_id, logs in logs_by_pledge_id.items():
         assert all(int(log["farmer_pledge_id"]) == pledge_id for log in logs)
+
+
+def test_get_input_catalog_entries_returns_standardized_rows(test_database_path):
+    """Catalog helpers should expose active standardized inputs for the settings page."""
+    entries = get_input_catalog_entries()
+
+    assert entries
+    first = entries[0]
+    assert "display_name" in first
+    assert first["input_category"]
+    assert first["default_unit"]
+
+
+def test_create_input_catalog_entry_adds_new_row(test_database_path):
+    """New standardized inputs should be insertable through the helper layer."""
+    created_id = create_input_catalog_entry(
+        input_category="Irrigation",
+        product_name="Night irrigation cycle",
+        brand_name=None,
+        application_method="Sprinkler line",
+        default_unit="m3",
+        compliance_tag="standard",
+        notes=None,
+    )
+
+    entries = get_input_catalog_entries(include_inactive=True)
+    assert any(int(entry["input_catalog_id"]) == created_id for entry in entries)
+
+
+def test_remove_input_catalog_entry_deactivates_used_rows(test_database_path):
+    """Referenced catalog items should be made inactive instead of hard-deleted."""
+    with sqlite3.connect(test_database_path) as connection:
+        input_catalog_id = connection.execute(
+            """
+            SELECT input_catalog_id
+            FROM farm_input_logs
+            WHERE input_catalog_id IS NOT NULL
+            LIMIT 1
+            """
+        ).fetchone()[0]
+
+    result = remove_input_catalog_entry(int(input_catalog_id))
+
+    assert result == "deactivated"
+    entries = get_input_catalog_entries(include_inactive=True)
+    matched = next(entry for entry in entries if int(entry["input_catalog_id"]) == int(input_catalog_id))
+    assert matched["is_active"] is False

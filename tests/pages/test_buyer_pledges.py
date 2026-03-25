@@ -19,6 +19,22 @@ def make_pledge(**overrides):
         "pledge_status": "open",
         "display_status": "Not started",
         "criteria_summary": "Priority: standard | Organic preference: No | Delivery window: 7 days",
+        "criteria": {
+            "required_inputs": [
+                {
+                    "input_type": "Fertiliser",
+                    "product_name": "NPK 17-17-17",
+                    "brand_name": "GreenGrow",
+                }
+            ],
+            "blocked_inputs": [
+                {
+                    "input_type": "Pesticide",
+                    "product_name": "Pyrethrin spray",
+                    "brand_name": "CropShield",
+                }
+            ],
+        },
         "deadline_state": "scheduled",
         "fulfillment_percent": 0,
     }
@@ -33,9 +49,11 @@ def test_buyer_pledges_page_returns_success(client):
     assert response.status_code == 200
     assert b"Buyer Pledges" in response.data
     assert b"Selected Pledge" in response.data
+    assert b"Required" in response.data
+    assert b"Blocked" in response.data
     assert b"Review eligible farms" in response.data
     assert b"/allocation" in response.data
-    assert b'data-select-url="' in response.data
+    assert b'data-pledge-id="' in response.data
 
 
 def test_buyer_pledges_page_renders_new_status_labels_not_old_section_titles(client):
@@ -141,7 +159,7 @@ def test_buyer_pledges_page_uses_fallbacks_for_missing_price_and_deadline(client
     assert response.status_code == 200
     assert b"TBC" in response.data
     assert b"No deadline set" in response.data
-    assert b"No additional criteria recorded" in response.data
+    assert b"None" in response.data
 
 
 def test_buyer_pledges_page_renders_progress_for_in_progress_pledges(client, monkeypatch):

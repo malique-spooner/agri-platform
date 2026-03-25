@@ -1,4 +1,15 @@
-<nav>
-    <a href="{{ url_for('buyer_pledges') }}">Buyer Pledges</a>
-    <a href="{{ url_for('farms') }}">Farm Directory</a>
+<nav class="topbar">
+    <a class="brand-lockup" href="{{ url_for('buyer_pledges') }}">
+        <img src="{{ url_for('static', filename='images/atlas-harvest-mark.svg') }}" alt="Atlas Harvest logo">
+        <span class="brand-lockup__text">
+            <strong data-brand-field="name">Malique's Farm</strong>
+            <span data-brand-field="descriptor">Coordination Console</span>
+        </span>
+    </a>
+    <div class="topbar__nav">
+        <span class="topbar__kicker" data-brand-field="kicker">Aggregator Workspace</span>
+        <a href="{{ url_for('buyer_pledges') }}">Buyer Pledges</a>
+        <a href="{{ url_for('farms') }}">Farm Directory</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+    </div>
 </nav>

@@ -22,28 +22,28 @@
     </p>
 </section>
 
-<section class="stats-grid">
-    <article class="stat-card">
-        <p class="stat-label">Farm Size</p>
-        <p class="stat-value">{{ farm.total_hectares }} ha</p>
+<section class="spotlight-ribbon">
+    <article class="spotlight-card">
+        <p class="spotlight-label">Farm size</p>
+        <p class="spotlight-value">{{ farm.total_hectares }} ha</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Active Pledges</p>
-        <p class="stat-value">{{ farm.pledge_count }}</p>
+    <article class="spotlight-card">
+        <p class="spotlight-label">Active pledges</p>
+        <p class="spotlight-value">{{ farm.pledge_count }}</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Crop Types</p>
-        <p class="stat-value">{{ farm.crop_count }}</p>
+    <article class="spotlight-card">
+        <p class="spotlight-label">Crop types</p>
+        <p class="spotlight-value">{{ farm.crop_count }}</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Listed Supply</p>
-        <p class="stat-value">{{ farm.total_supply_kg }} kg</p>
+    <article class="spotlight-card spotlight-card--wide">
+        <p class="spotlight-label">Profile view</p>
+        <p class="spotlight-copy">Use the map for orientation, then review each crop offer separately to inspect the full recorded input history.</p>
     </article>
 </section>
 
 <section class="detail-grid">
     <article class="info-card">
-        <h2>Contact</h2>
+        <h2>Contact &amp; Location</h2>
         <dl class="meta-list">
             <div>
                 <dt>Farmer</dt>
@@ -60,6 +60,14 @@
             <div>
                 <dt>Next Availability</dt>
                 <dd>{{ farm.next_available_date or "No dated supply listed" }}</dd>
+            </div>
+            <div>
+                <dt>County</dt>
+                <dd>{{ farm.county or "Not provided" }}</dd>
+            </div>
+            <div>
+                <dt>Region</dt>
+                <dd>{{ farm.region or "Not provided" }}</dd>
             </div>
         </dl>
     </article>
@@ -88,9 +96,10 @@
         </div>
     </article>
 
-    <article class="info-card">
+    <article class="info-card info-card--wide">
         <h2>Production Pledges</h2>
         {% if pledges %}
+        <div class="detail-table-wrap">
         <table>
             <thead>
                 <tr>
@@ -99,6 +108,7 @@
                     <th>Asking Price</th>
                     <th>Available From</th>
                     <th>Status</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -114,6 +124,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p>No production pledges are currently listed for this farm.</p>
         {% endif %}
