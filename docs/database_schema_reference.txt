@@ -1,0 +1,231 @@
+Agri Platform Database Schema Reference
+Last updated: 25 March 2026
+
+Purpose
+This file describes the final SQLite schema used by the Version 0 prototype. It records the tables, primary keys, foreign keys, and the main relationships between entities.
+
+Database File
+- `database/app_data.db`
+
+High-Level Relationship Map
+- One buyer account can create many buyer pledges.
+- One farmer account can create many farmer pledges.
+- One buyer pledge can be fulfilled by many farmer pledges through `pledge_allocations`.
+- One farmer pledge can contribute to many buyer pledges through `pledge_allocations`.
+- One farmer account can have many farm input logs.
+- One farmer pledge can have many farm input logs.
+- One standardized catalog item can be reused across many farm input logs.
+
+Table: buyer_accounts
+Primary key
+- `buyer_account_id`
+
+Important columns
+- `organisation_name`
+- `contact_name`
+- `email`
+- `phone`
+- `created_at`
+
+Purpose
+- Stores the buyer organization identity and core contact information.
+
+Relationships
+- Referenced by `buyer_pledges.buyer_account_id`
+
+Table: buyer_pledges
+Primary key
+- `buyer_pledge_id`
+
+Foreign keys
+- `buyer_account_id` -> `buyer_accounts.buyer_account_id`
+
+Important columns
+- `crop_type`
+- `quantity_kg`
+- `target_price_per_kg`
+- `needed_by_date`
+- `pledge_status`
+- `notes`
+- `created_at`
+
+Purpose
+- Represents one buyer demand record for a crop, quantity, deadline, and buyer-rule criteria.
+
+Status values used by the prototype
+- `open`
+- `partial`
+- `fulfilled`
+
+Notes field
+- Stores structured JSON for buyer criteria, including required and blocked inputs.
+
+Relationships
+- Many buyer pledges belong to one buyer account.
+- One buyer pledge can have many rows in `pledge_allocations`.
+
+Table: farmer_accounts
+Primary key
+- `farmer_account_id`
+
+Important columns
+- `farm_name`
+- `farmer_name`
+- `county`
+- `region`
+- `latitude`
+- `longitude`
+- `email`
+- `phone`
+- `total_hectares`
+- `created_at`
+
+Purpose
+- Stores farm identity, operator information, geography, and contact details.
+
+Geographic scope used by the seeded demo data
+- Uganda
+- Kenya
+- Zambia
+
+Relationships
+- Referenced by `farmer_pledges.farmer_account_id`
+- Referenced by `farm_input_logs.farmer_account_id`
+
+Table: farmer_pledges
+Primary key
+- `farmer_pledge_id`
+
+Foreign keys
+- `farmer_account_id` -> `farmer_accounts.farmer_account_id`
+
+Important columns
+- `crop_type`
+- `quantity_kg`
+- `asking_price_per_kg`
+- `available_from_date`
+- `pledge_status`
+- `notes`
+- `created_at`
+
+Purpose
+- Represents one crop offer from one farm.
+
+Status values used by the prototype
+- `available`
+- `partial`
+- `allocated`
+
+Relationships
+- Many farmer pledges belong to one farmer account.
+- One farmer pledge can have many rows in `pledge_allocations`.
+- One farmer pledge can have many linked `farm_input_logs`.
+
+Table: pledge_allocations
+Primary key
+- `allocation_id`
+
+Foreign keys
+- `buyer_pledge_id` -> `buyer_pledges.buyer_pledge_id`
+- `farmer_pledge_id` -> `farmer_pledges.farmer_pledge_id`
+
+Important columns
+- `allocated_quantity_kg`
+- `allocation_status`
+- `created_at`
+
+Purpose
+- Links buyer demand to farm supply and records how much quantity was committed.
+
+Relationships
+- Many allocation rows can belong to one buyer pledge.
+- Many allocation rows can belong to one farmer pledge.
+- Together, these rows create the batch composition used by the PDF reports.
+
+Table: input_catalog
+Primary key
+- `input_catalog_id`
+
+Important columns
+- `input_category`
+- `product_name`
+- `brand_name`
+- `application_method`
+- `default_unit`
+- `compliance_tag`
+- `is_active`
+- `notes`
+- `created_at`
+
+Purpose
+- Standardizes the agricultural inputs and production activities that can appear in input logs.
+
+Prototype classification values
+- `standard`
+- `organic`
+- `restricted`
+
+Important modeling note
+- The catalog itself does not decide whether something is banned for a batch.
+- Buyer pledges decide which inputs are required or blocked.
+- The catalog only standardizes the known input vocabulary.
+
+Relationships
+- Referenced by `farm_input_logs.input_catalog_id`
+
+Table: farm_input_logs
+Primary key
+- `input_log_id`
+
+Foreign keys
+- `farmer_account_id` -> `farmer_accounts.farmer_account_id`
+- `farmer_pledge_id` -> `farmer_pledges.farmer_pledge_id`
+- `input_catalog_id` -> `input_catalog.input_catalog_id`
+
+Important columns
+- `input_type`
+- `product_name`
+- `brand_name`
+- `application_method`
+- `quantity`
+- `unit`
+- `log_date`
+- `notes`
+- `created_at`
+
+Purpose
+- Records production activity such as pesticides, fertilizers, irrigation events, biological control, or soil treatment.
+
+Modeling note
+- Logs can be attached to a farm generally through `farmer_account_id`.
+- Logs can also be attached directly to a specific crop offer through `farmer_pledge_id`.
+- Logs are normalized against the shared catalog through `input_catalog_id`.
+
+Why this matters
+- The allocation builder compares these logs to buyer pledge rules.
+- The farm detail page uses them for crop-level traceability.
+- The PDF reports use them for buyer and farmer reporting.
+
+Primary Key Summary
+- `buyer_accounts.buyer_account_id`
+- `buyer_pledges.buyer_pledge_id`
+- `farmer_accounts.farmer_account_id`
+- `farmer_pledges.farmer_pledge_id`
+- `pledge_allocations.allocation_id`
+- `input_catalog.input_catalog_id`
+- `farm_input_logs.input_log_id`
+
+Foreign Key Summary
+- `buyer_pledges.buyer_account_id` -> `buyer_accounts.buyer_account_id`
+- `farmer_pledges.farmer_account_id` -> `farmer_accounts.farmer_account_id`
+- `pledge_allocations.buyer_pledge_id` -> `buyer_pledges.buyer_pledge_id`
+- `pledge_allocations.farmer_pledge_id` -> `farmer_pledges.farmer_pledge_id`
+- `farm_input_logs.farmer_account_id` -> `farmer_accounts.farmer_account_id`
+- `farm_input_logs.farmer_pledge_id` -> `farmer_pledges.farmer_pledge_id`
+- `farm_input_logs.input_catalog_id` -> `input_catalog.input_catalog_id`
+
+Operational Notes
+- Foreign keys are enabled with `PRAGMA foreign_keys = ON`.
+- The setup script is idempotent.
+- The demo data generator is deterministic and validation-backed.
+- The current app and tests assume this schema shape.

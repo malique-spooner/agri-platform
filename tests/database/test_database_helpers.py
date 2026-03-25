@@ -155,3 +155,22 @@ def test_remove_input_catalog_entry_deactivates_used_rows(test_database_path):
     entries = get_input_catalog_entries(include_inactive=True)
     matched = next(entry for entry in entries if int(entry["input_catalog_id"]) == int(input_catalog_id))
     assert matched["is_active"] is False
+
+
+def test_remove_input_catalog_entry_deletes_unused_rows(test_database_path):
+    """Unused catalog items should be hard-deleted so the settings list stays clean."""
+    created_id = create_input_catalog_entry(
+        input_category="Irrigation",
+        product_name="Temporary cleanup entry",
+        brand_name=None,
+        application_method="Drip line",
+        default_unit="m3",
+        compliance_tag="standard",
+        notes=None,
+    )
+
+    result = remove_input_catalog_entry(created_id)
+
+    assert result == "deleted"
+    entries = get_input_catalog_entries(include_inactive=True)
+    assert all(int(entry["input_catalog_id"]) != created_id for entry in entries)

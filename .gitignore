@@ -6,3 +6,4 @@ __pycache__/
 database/app_data.db
 .vscode/
 logs/
+docs/*.pdf

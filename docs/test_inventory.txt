@@ -1,0 +1,197 @@
+Agri Platform Test Inventory
+Last updated: 25 March 2026
+
+Purpose
+This file records every automated test in the project and explains, in plain language, what each one proves. It is intended as a maintenance reference rather than an executable artifact.
+
+Test Structure
+- tests/pages: route and HTML-response behavior
+- tests/logic: pure logic, logging, and PDF generation
+- tests/database: schema, generated data, helper behavior, and persistence
+
+tests/pages/test_settings.py
+
+- test_settings_page_returns_success
+  Confirms the settings page loads successfully and renders the input catalog management interface.
+- test_settings_page_can_add_catalog_entry
+  Confirms a new standardized input can be created through the settings form and persisted to the database.
+- test_settings_page_deactivates_used_catalog_entry
+  Confirms a catalog item already referenced by farm input logs is marked inactive rather than deleted.
+- test_settings_page_can_reset_database
+  Confirms the reset action rebuilds the demo database and restores the seeded buyer-account count.
+
+tests/pages/test_buyer_pledges.py
+
+- test_buyer_pledges_page_returns_success
+  Confirms the buyer-pledge homepage loads and includes the queue table, selected-pledge panel, criteria sections, and allocation link.
+- test_buyer_pledges_page_renders_new_status_labels_not_old_section_titles
+  Confirms the homepage uses the current display labels Not started, In progress, and Completed instead of the older section names.
+- test_buyer_pledges_page_orders_completed_after_not_started_and_in_progress
+  Confirms the queue prioritizes active work ahead of completed demand.
+- test_buyer_pledges_page_uses_selected_query_param_for_detail_panel
+  Confirms the selected-pledge side panel can be driven by the `selected` query parameter.
+- test_buyer_pledges_page_uses_fallbacks_for_missing_price_and_deadline
+  Confirms missing target price and deadline values render as user-friendly fallback text.
+- test_buyer_pledges_page_renders_progress_for_in_progress_pledges
+  Confirms in-progress pledges show fulfillment progress in the detailed panel.
+- test_buyer_pledges_page_filters_rows_by_search_and_crop
+  Confirms text search and crop filters narrow the visible queue rows.
+- test_buyer_pledges_page_renders_empty_state_when_filters_remove_all_rows
+  Confirms the page keeps its structure and shows an empty state when no pledges match the filters.
+
+tests/pages/test_farms.py
+
+- test_farms_page_returns_success
+  Confirms the farm directory page loads and renders the compact comparison table.
+- test_farms_page_filters_by_search_term
+  Confirms search filtering narrows farm rows by farm name, farmer name, county, or region text.
+- test_farms_page_filters_by_crop
+  Confirms crop filtering returns only farms with matching crop offers.
+- test_farms_page_filters_by_availability
+  Confirms the availability filter keeps only farms considered available soon.
+- test_farms_page_renders_empty_state_when_filters_remove_all_results
+  Confirms the farm directory shows a compact empty state instead of breaking when filters remove all farms.
+- test_farm_profile_page_returns_success
+  Confirms a farm profile page loads with pledge information, location information, and the embedded map scaffold.
+- test_farm_pledge_detail_page_returns_success
+  Confirms a crop-offer detail page loads with the pledge-specific input log history table.
+- test_farm_pledge_detail_page_returns_404_for_unknown_pledge
+  Confirms the app returns HTTP 404 for a pledge id that does not belong to the given farm.
+- test_farm_profile_page_returns_404_for_unknown_farm
+  Confirms the app returns HTTP 404 for an unknown farm id.
+
+tests/pages/test_allocations.py
+
+- test_build_allocation_page_returns_success
+  Confirms the allocation builder loads and shows the staging panel, progress labels, export controls, and crop-offer list.
+- test_build_allocation_page_filters_farms_to_matching_crop
+  Confirms the allocation builder only shows farm offers for the selected buyer crop.
+- test_build_allocation_page_adds_suggested_quantity_to_draft
+  Confirms staging a crop offer uses the suggested quantity and updates submitted, staged, and remaining totals.
+- test_build_allocation_page_renders_validation_error_for_excess_total
+  Confirms the builder prevents staging allocations once buyer demand is exhausted.
+- test_build_allocation_page_shows_blocked_crop_offer_as_not_selectable
+  Confirms blocked offers are visible but cannot be staged.
+- test_build_allocation_buyer_export_returns_pdf
+  Confirms the buyer-summary export returns a downloadable PDF for a completed batch.
+- test_build_allocation_farmer_export_returns_pdf
+  Confirms the farmer-summary export returns a downloadable PDF for a completed batch.
+- test_build_allocation_export_is_blocked_until_batch_is_complete
+  Confirms export requests are rejected until the buyer pledge is fully fulfilled.
+- test_build_allocation_page_can_hide_ineligible_offers
+  Confirms the hide toggle removes blocked offers from the visible results.
+- test_build_allocation_page_hides_blocked_offers_when_checkbox_submits_two_values
+  Confirms the hide toggle still works when the browser submits both the hidden `0` value and the checked `1` value.
+- test_build_allocation_page_hide_toggle_keeps_review_offers_visible
+  Confirms the hide toggle removes blocked offers but keeps review-needed offers visible.
+- test_build_allocation_page_submit_writes_allocations_and_refreshes_state
+  Confirms submitting staged contributions calls allocation persistence, refreshes remaining demand, and clears the staged list.
+- test_build_allocation_page_export_button_returns_pdf_with_mocked_pledge
+  Confirms buyer PDF export still works when the page context is monkeypatched in isolation.
+- test_build_allocation_page_returns_404_for_unknown_pledge
+  Confirms the builder returns HTTP 404 for an unknown buyer pledge id.
+
+tests/pages/test_home_page.py
+
+- test_home_page_redirects_to_buyer_pledges
+  Confirms the root route redirects to the buyer-pledge queue homepage.
+
+tests/logic/test_logging_config.py
+
+- test_configure_logging_uses_single_app_log_file
+  Confirms runtime logging writes to one `app.log` file rather than creating rotating sibling files.
+- test_configure_logging_reuses_existing_app_file_handler
+  Confirms repeated logging setup does not attach duplicate file handlers.
+
+tests/logic/test_allocation_logic.py
+
+- test_get_farmer_pledges_for_crop_returns_matching_rows
+  Confirms crop queries return only matching farmer offers with positive remaining supply.
+- test_build_draft_allocation_summarises_valid_selection
+  Confirms valid staged rows are totaled correctly and remaining demand is calculated correctly.
+- test_build_draft_allocation_rejects_quantity_above_available_supply
+  Confirms the draft builder rejects quantities that exceed what a farm offer can supply.
+- test_build_draft_allocation_rejects_non_selectable_pledges
+  Confirms the draft builder rejects offers that fail buyer criteria.
+- test_suggested_allocation_quantity_caps_at_remaining_demand
+  Confirms the helper never suggests more than the remaining buyer demand.
+
+tests/logic/test_reporting.py
+
+- test_build_buyer_summary_pdf_returns_pdf_bytes
+  Confirms the buyer report generator returns real PDF bytes for a buyer pledge.
+- test_build_farmer_summary_pdf_handles_confirmed_contributions
+  Confirms the farmer participation report renders once confirmed allocations exist.
+
+tests/database/test_database_helpers.py
+
+- test_summarise_buyer_criteria_returns_readable_text
+  Confirms structured buyer criteria JSON is condensed into a readable text summary.
+- test_parse_buyer_criteria_falls_back_for_invalid_json
+  Confirms malformed buyer-criteria JSON does not crash helper consumers and instead returns a safe empty structure.
+- test_get_deadline_state_classifies_missing_dates_as_unscheduled
+  Confirms missing or invalid deadlines are treated as unscheduled.
+- test_get_all_buyer_pledges_includes_display_and_progress_fields
+  Confirms buyer-pledge rows include the derived display and progress fields required by the homepage.
+- test_get_farmer_pledges_for_crop_only_returns_rows_with_remaining_supply
+  Confirms fully allocated farmer offers are excluded from crop queries.
+- test_get_input_logs_for_pledge_ids_returns_logs_keyed_by_requested_ids
+  Confirms bulk input-log retrieval preserves the requested pledge-id shape and grouping.
+- test_get_input_catalog_entries_returns_standardized_rows
+  Confirms input catalog retrieval returns display-ready standardized entries.
+- test_create_input_catalog_entry_adds_new_row
+  Confirms the helper layer can create a new catalog item.
+- test_remove_input_catalog_entry_deactivates_used_rows
+  Confirms referenced catalog items are deactivated instead of hard-deleted.
+
+tests/database/test_database.py
+
+- test_expected_tables_exist
+  Confirms all required schema tables exist.
+- test_generated_data_loads_correctly
+  Confirms the demo database contains buyer pledges and farm records after generation.
+- test_input_catalog_is_seeded
+  Confirms the normalized input catalog is populated.
+- test_foreign_keys_are_valid
+  Confirms the generated database satisfies SQLite foreign-key checks.
+- test_buyer_pledge_quantities_are_positive
+  Confirms buyer demand quantities are always positive.
+- test_farmer_pledge_quantities_are_positive
+  Confirms farmer supply quantities are always positive.
+- test_allocations_never_exceed_buyer_demand
+  Confirms confirmed allocations never exceed the requested buyer quantity.
+- test_allocations_never_exceed_farmer_supply
+  Confirms confirmed allocations never exceed the farmer’s pledged quantity.
+- test_generated_allocations_do_not_repeat_same_buyer_farmer_offer_pair
+  Confirms the seeded dataset does not fragment one farm offer into repeated allocation rows for the same buyer pledge.
+- test_buyer_pledge_statuses_match_allocation_totals
+  Confirms buyer pledge status values align with the actual allocated totals.
+- test_generated_data_contains_open_partial_and_fulfilled_buyer_pledges
+  Confirms the generated dataset contains all three buyer-demand states.
+- test_generated_data_contains_optional_null_fields
+  Confirms optional nullable fields remain realistically nullable in the demo data.
+- test_farm_input_logs_reference_the_normalized_catalog
+  Confirms every generated log references a standardized catalog item.
+- test_generated_farm_coordinates_are_in_supported_african_countries
+  Confirms farm coordinates belong to the supported countries and remain within valid geographic bounds.
+- test_farm_directory_dataset_only_uses_three_supported_countries
+  Confirms the seeded farm dataset stays inside the three-country operating region.
+- test_buyer_pledge_notes_are_valid_json
+  Confirms buyer criteria are stored as valid JSON.
+- test_deadlines_do_not_precede_creation_dates
+  Confirms buyer deadlines and farmer availability dates do not predate record creation.
+- test_generated_dates_stay_close_to_today_for_demo_use
+  Confirms generated dates stay close to the current operating period and input logs are not future-dated.
+- test_input_logs_reference_matching_farmer_when_pledge_is_present
+  Confirms any pledge-linked input log belongs to the same farmer account as the linked pledge.
+- test_generated_dataset_contains_dense_crop_input_history
+  Confirms most crop offers have enough linked logs to make traceability pages useful.
+- test_input_logs_include_specific_product_and_method_details
+  Confirms input logs include the detailed metadata required for future buyer-rule matching.
+- test_persist_confirmed_allocation_writes_rows_and_updates_statuses
+  Confirms confirmed allocation persistence inserts rows and refreshes buyer and farmer statuses.
+
+How to Use This File
+- Use it as a checklist when refactoring.
+- Update it whenever a test is added, renamed, or removed.
+- Keep the descriptions aligned with the real assertions, not just the intended feature behavior.

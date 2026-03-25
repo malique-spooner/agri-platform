@@ -44,3 +44,17 @@ def test_build_farmer_summary_pdf_handles_confirmed_contributions(test_database_
     assert context["farms"]
     assert pdf_bytes.startswith(b"%PDF")
     assert len(pdf_bytes) > 1800
+
+
+def test_build_buyer_summary_pdf_handles_open_batches_without_allocations(test_database_path):
+    """Buyer reports should still render when a pledge exists but has no confirmed allocations yet."""
+    buyer_pledge = next(
+        pledge
+        for pledge in get_all_buyer_pledges()
+        if pledge["pledge_status"] == "open"
+    )
+
+    pdf_bytes = build_buyer_summary_pdf(int(buyer_pledge["buyer_pledge_id"]))
+
+    assert pdf_bytes.startswith(b"%PDF")
+    assert len(pdf_bytes) > 1200
