@@ -1,15 +1,15 @@
 <nav class="topbar">
     <a class="brand-lockup" href="{{ url_for('buyer_pledges') }}">
-        <img src="{{ url_for('static', filename='images/atlas-harvest-mark.svg') }}" alt="Atlas Harvest logo">
+        <img src="{{ url_for('static', filename='images/atlas-harvest-mark.svg') }}" alt="TRN Farmer Trace logo">
         <span class="brand-lockup__text">
-            <strong data-brand-field="name">Malique's Farm</strong>
-            <span data-brand-field="descriptor">Coordination Console</span>
+            <strong data-brand-field="name">TRN Farmer Trace</strong>
+            <span data-brand-field="descriptor">Collective Trade System</span>
         </span>
     </a>
     <div class="topbar__nav">
-        <span class="topbar__kicker" data-brand-field="kicker">Aggregator Workspace</span>
-        <a href="{{ url_for('buyer_pledges') }}">Buyer Pledges</a>
-        <a href="{{ url_for('farms') }}">Farm Directory</a>
+        <span class="topbar__kicker" data-brand-field="kicker">NGO Aggregator Workspace</span>
+        <a href="{{ url_for('buyer_pledges') }}">Export Lots</a>
+        <a href="{{ url_for('farms') }}">Registered Farms</a>
         <a href="{{ url_for('settings') }}">Settings</a>
     </div>
 </nav>

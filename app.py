@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 from io import BytesIO
+import json
 import logging
 import os
 from types import SimpleNamespace
@@ -17,6 +18,8 @@ from logic.allocation_logic import (
 )
 from logic.database_helpers import (
     create_input_catalog_entry,
+    create_buyer_export_lot,
+    create_farm_crop_record,
     get_all_buyer_pledges,
     get_all_farms,
     get_buyer_pledge_by_id,
@@ -26,10 +29,12 @@ from logic.database_helpers import (
     get_farmer_pledges_for_crop,
     get_farmer_pledges_for_farm,
     get_input_catalog_entries,
-    get_input_logs_for_pledge,
-    get_input_logs_for_pledge_ids,
+    get_input_catalog_entry_by_id,
+    get_crop_records_for_pledge,
+    get_crop_records_for_pledge_ids,
     persist_confirmed_allocation,
     remove_input_catalog_entry,
+    register_farmer_account,
 )
 from logic.logging_config import configure_logging
 from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
@@ -37,6 +42,12 @@ from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
 
 configure_logging()
 logger = logging.getLogger(__name__)
+
+# Backward-compatible aliases so existing tests and helpers can keep using the
+# older names while the app code reads more cleanly.
+create_farm_input_log = create_farm_crop_record
+get_input_logs_for_pledge = get_crop_records_for_pledge
+get_input_logs_for_pledge_ids = get_crop_records_for_pledge_ids
 
 
 def buyer_status_filter_to_raw(status_filter: str) -> str:
@@ -236,10 +247,190 @@ def filter_and_sort_allocation_offers(
     return sorted(filtered, key=lambda pledge: allocation_offer_sort_key(pledge, sort_by))
 
 
+def auto_fill_allocation_quantities(
+    current_quantities: dict[int, str],
+    pledges: list[dict[str, Any]],
+    remaining_after_kg: float,
+) -> dict[int, str]:
+    """Fill remaining buyer demand with the best available selectable offers."""
+    updated_quantities = dict(current_quantities)
+    remaining = float(remaining_after_kg)
+
+    for pledge in pledges:
+        if remaining <= 0:
+            break
+        if not pledge.get("is_selectable", True):
+            continue
+
+        pledge_id = int(pledge["farmer_pledge_id"])
+        if pledge_id in updated_quantities:
+            continue
+
+        available_quantity = float(pledge.get("available_quantity_kg") or 0)
+        quantity = min(remaining, available_quantity)
+        if quantity <= 0:
+            continue
+
+        updated_quantities[pledge_id] = str(int(quantity) if quantity.is_integer() else round(quantity, 2))
+        remaining -= quantity
+
+    return updated_quantities
+
+
+def buyer_pledge_is_actionable(pledge: dict[str, Any]) -> bool:
+    """Return whether a buyer pledge still has demand that can be auto-allocated."""
+    return float(pledge.get("remaining_quantity_kg") or 0) > 0 and str(pledge.get("pledge_status", "")).lower() in {
+        "open",
+        "partial",
+    }
+
+
+def build_auto_allocate_preview(
+    buyer_pledge: dict[str, Any] | None,
+) -> tuple[bool, str, float]:
+    """Return whether the selected pledge can be auto-filled and submitted."""
+    if buyer_pledge is None:
+        return False, "Select an export lot to check auto-submit readiness.", 0.0
+
+    if not buyer_pledge_is_actionable(buyer_pledge):
+        return False, "This export lot is already complete.", 0.0
+
+    raw_eligible_pledges = get_farmer_pledges_for_crop(str(buyer_pledge["crop_type"]))
+    logs_by_pledge_id = get_input_logs_for_pledge_ids(
+        [int(pledge["farmer_pledge_id"]) for pledge in raw_eligible_pledges]
+    )
+    eligible_pledges = enrich_eligible_pledges_with_criteria(
+        buyer_criteria=buyer_pledge.get("criteria", {}),
+        eligible_pledges=raw_eligible_pledges,
+        logs_by_pledge_id=logs_by_pledge_id,
+    )
+    selectable_supply = sum(
+        float(pledge.get("available_quantity_kg") or 0)
+        for pledge in eligible_pledges
+        if pledge.get("is_selectable", True)
+    )
+    remaining = float(buyer_pledge.get("remaining_quantity_kg") or 0)
+    if selectable_supply < remaining:
+        return (
+            False,
+            f"Only {selectable_supply:.0f} kg of eligible supply is available for {remaining:.0f} kg remaining.",
+            selectable_supply,
+        )
+    return True, f"Auto-fill can fully submit this lot with {selectable_supply:.0f} kg of eligible supply.", selectable_supply
+
+
+def auto_allocate_and_submit_buyer_pledge(pledge_id: int) -> tuple[bool, str]:
+    """Auto-fill and persist a buyer pledge allocation in one step."""
+    buyer_pledge = get_buyer_pledge_by_id(pledge_id)
+    if buyer_pledge is None:
+        logger.warning("Buyer pledge not found for auto-allocate-and-submit id=%s", pledge_id)
+        return False, "Buyer pledge not found."
+
+    ready, reason, _ = build_auto_allocate_preview(buyer_pledge)
+    if not ready:
+        logger.info(
+            "Auto-allocate-and-submit rejected buyer pledge id=%s because it is not ready: %s",
+            pledge_id,
+            reason,
+        )
+        return False, reason
+
+    raw_eligible_pledges = get_farmer_pledges_for_crop(str(buyer_pledge["crop_type"]))
+    logs_by_pledge_id = get_input_logs_for_pledge_ids(
+        [int(pledge["farmer_pledge_id"]) for pledge in raw_eligible_pledges]
+    )
+    eligible_pledges = enrich_eligible_pledges_with_criteria(
+        buyer_criteria=buyer_pledge.get("criteria", {}),
+        eligible_pledges=raw_eligible_pledges,
+        logs_by_pledge_id=logs_by_pledge_id,
+    )
+    draft_allocation = build_draft_allocation(
+        buyer_pledge=buyer_pledge,
+        eligible_pledges=eligible_pledges,
+        submitted_quantities={},
+    )
+    updated_quantities = auto_fill_allocation_quantities(
+        {},
+        eligible_pledges,
+        float(draft_allocation["remaining_after_kg"]),
+    )
+    draft_allocation = build_draft_allocation(
+        buyer_pledge=buyer_pledge,
+        eligible_pledges=eligible_pledges,
+        submitted_quantities=updated_quantities,
+    )
+    if draft_allocation["selected_rows"] and not draft_allocation["errors"]:
+        persist_confirmed_allocation(
+            buyer_pledge_id=int(buyer_pledge["buyer_pledge_id"]),
+            selected_rows=draft_allocation["selected_rows"],
+        )
+        logger.info(
+            "Auto-allocate-and-submit persisted buyer pledge id=%s with %s row(s)",
+            buyer_pledge["buyer_pledge_id"],
+            len(draft_allocation["selected_rows"]),
+        )
+        return True, "Auto-allocate and submit completed."
+
+    logger.warning(
+        "Auto-allocate-and-submit could not complete for buyer pledge id=%s because the draft was empty or invalid",
+        buyer_pledge["buyer_pledge_id"],
+    )
+    return False, "Auto-fill staged the draft, but it could not be submitted."
+
+
+def build_buyer_queue_summary(pledges: list[dict[str, Any]]) -> dict[str, float | int]:
+    """Return high-level metrics for the buyer pledges dashboard."""
+    total_quantity = sum(float(pledge.get("quantity_kg") or 0) for pledge in pledges)
+    remaining_quantity = sum(float(pledge.get("remaining_quantity_kg") or 0) for pledge in pledges)
+    return {
+        "total_lots": len(pledges),
+        "ready_lots": sum(1 for pledge in pledges if str(pledge.get("pledge_status", "")).lower() == "fulfilled"),
+        "active_lots": sum(
+            1
+            for pledge in pledges
+            if str(pledge.get("pledge_status", "")).lower() in {"open", "partial"}
+        ),
+        "total_quantity_kg": total_quantity,
+        "remaining_quantity_kg": remaining_quantity,
+    }
+
+
+def catalog_entry_to_criterion(entry: dict[str, Any]) -> dict[str, Any]:
+    """Convert a catalog row into buyer-criteria JSON."""
+    return {
+        "input_type": entry.get("input_category"),
+        "product_name": entry.get("product_name"),
+        "brand_name": entry.get("brand_name"),
+    }
+
+
+def parse_catalog_selection(
+    selected_ids: list[str],
+    catalog_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Map selected catalog ids to criteria payload entries, ignoring duplicates."""
+    catalog_by_id = {str(entry["input_catalog_id"]): entry for entry in catalog_entries}
+    criteria: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for selected_id in selected_ids:
+        selected_id = str(selected_id)
+        if selected_id in seen_ids:
+            continue
+        seen_ids.add(selected_id)
+        entry = catalog_by_id.get(selected_id)
+        if entry is not None:
+            criteria.append(catalog_entry_to_criterion(entry))
+    return criteria
+
+
 def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder="pages")
-    app.secret_key = os.environ.get("AGRI_PLATFORM_SECRET_KEY", "agri-platform-dev-secret")
+    app.secret_key = (
+        os.environ.get("TRN_FARMER_TRACE_SECRET_KEY")
+        or os.environ.get("AGRI_PLATFORM_SECRET_KEY")
+        or "trn-farmer-trace-dev-secret"
+    )
     logger.info("Flask application created")
 
     @app.route("/")
@@ -248,16 +439,17 @@ def create_app() -> Flask:
         logger.info("Redirecting home page to buyer pledges")
         return redirect(url_for("buyer_pledges"))
 
-    @app.route("/buyer-pledges")
+    @app.route("/buyer-pledges", methods=["GET", "POST"])
     def buyer_pledges():
         """Render the buyer pledge listing page."""
         logger.info("Loading buyer pledges page")
         all_pledges = get_all_buyer_pledges()
+        page_message = request.args.get("message", "").strip()
+        selected_id = request.args.get("selected", "").strip()
         search_term = request.args.get("q", "").strip()
         crop_filter = request.args.get("crop", "").strip()
         status_filter = request.args.get("status", "").strip()
         sort_by = request.args.get("sort", "priority").strip() or "priority"
-        selected_id = request.args.get("selected", "").strip()
         logger.info(
             "Buyer pledge filters q=%r crop=%r status=%r sort=%r selected=%r",
             search_term,
@@ -283,7 +475,44 @@ def create_app() -> Flask:
         if selected_pledge is None and pledges:
             selected_pledge = pledges[0]
 
+        auto_allocate_ready, auto_allocate_reason, auto_allocate_supply = build_auto_allocate_preview(selected_pledge)
+
+        if request.method == "POST":
+            action = request.form.get("action", "").strip()
+            selected_id = request.form.get("selected_pledge_id", "").strip() or selected_id
+            if action == "auto_fill_and_submit":
+                post_selected_pledge = selected_pledge
+                if selected_id.isdigit():
+                    post_selected_pledge = next(
+                        (pledge for pledge in all_pledges if int(pledge.get("buyer_pledge_id", 0)) == int(selected_id)),
+                        post_selected_pledge,
+                    )
+                post_ready, post_reason, _ = build_auto_allocate_preview(post_selected_pledge)
+                if post_selected_pledge is None or not post_ready:
+                    logger.info(
+                        "Auto-allocate-and-submit blocked for selected buyer pledge id=%s: %s",
+                        selected_id,
+                        post_reason,
+                    )
+                    return redirect(
+                        url_for(
+                            "buyer_pledges",
+                            selected=selected_id if selected_id.isdigit() else None,
+                            message=post_reason,
+                        )
+                    )
+
+                success, message = auto_allocate_and_submit_buyer_pledge(int(post_selected_pledge["buyer_pledge_id"]))
+                return redirect(
+                    url_for(
+                        "buyer_pledges",
+                        selected=post_selected_pledge["buyer_pledge_id"],
+                        message=message,
+                    )
+                )
+
         crop_options = sorted({str(pledge.get("crop_type", "")) for pledge in all_pledges if pledge.get("crop_type")})
+        dashboard_summary = build_buyer_queue_summary(all_pledges)
         logger.info("Rendering buyer pledges page with %s visible pledge(s)", len(pledges))
         return render_template(
             "buyer_pledges.html",
@@ -294,6 +523,111 @@ def create_app() -> Flask:
             crop_filter=crop_filter,
             status_filter=status_filter,
             sort_by=sort_by,
+            dashboard_summary=dashboard_summary,
+            page_message=page_message,
+            auto_allocate_ready=auto_allocate_ready,
+            auto_allocate_reason=auto_allocate_reason,
+            auto_allocate_supply=auto_allocate_supply,
+        )
+
+    @app.route("/buyer-pledges/new", methods=["GET", "POST"])
+    @app.route("/export-lots/new", methods=["GET", "POST"])
+    def create_export_lot():
+        """Render and process the export lot creation form."""
+        logger.info("Loading export lot creation page")
+        message = ""
+        success = False
+        created_pledge_id = None
+        crop_options = ["Arabica Coffee", "Robusta Coffee"]
+        catalog_entries = get_input_catalog_entries()
+
+        if request.method == "POST":
+            organisation_name = request.form.get("organisation_name", "").strip()
+            contact_name = request.form.get("contact_name", "").strip()
+            email = request.form.get("email", "").strip()
+            phone = request.form.get("phone", "").strip()
+            crop_type = request.form.get("crop_type", "").strip()
+            quantity_raw = request.form.get("quantity_kg", "").strip()
+            target_price_raw = request.form.get("target_price_per_kg", "").strip()
+            needed_by_date = request.form.get("needed_by_date", "").strip()
+            required_input_ids = request.form.getlist("required_input_ids")
+            blocked_input_ids = request.form.getlist("blocked_input_ids")
+
+            errors = []
+            if not organisation_name:
+                errors.append("Organisation name is required.")
+            if not contact_name:
+                errors.append("Contact name is required.")
+            if not crop_type:
+                errors.append("Crop type is required.")
+            if not quantity_raw:
+                errors.append("Quantity is required.")
+
+            quantity_kg = None
+            target_price_per_kg = None
+
+            if quantity_raw:
+                try:
+                    quantity_kg = float(quantity_raw)
+                    if quantity_kg <= 0:
+                        errors.append("Quantity must be greater than zero.")
+                except ValueError:
+                    errors.append("Quantity must be a number.")
+
+            if target_price_raw:
+                try:
+                    target_price_per_kg = float(target_price_raw)
+                    if target_price_per_kg <= 0:
+                        errors.append("Target price must be greater than zero.")
+                except ValueError:
+                    errors.append("Target price must be a number.")
+
+            if needed_by_date:
+                try:
+                    date.fromisoformat(needed_by_date)
+                except ValueError:
+                    errors.append("Deadline must use YYYY-MM-DD format.")
+            else:
+                needed_by_date = None
+
+            required_selection = {str(value) for value in required_input_ids if str(value).strip()}
+            blocked_selection = {str(value) for value in blocked_input_ids if str(value).strip()}
+            if required_selection & blocked_selection:
+                errors.append("A catalog entry cannot be both required and blocked.")
+
+            if errors:
+                message = " ".join(errors)
+                logger.warning("Export lot creation failed validation: %s", message)
+            else:
+                notes_payload = {
+                    "priority": "standard",
+                    "organic_preference": False,
+                    "delivery_window_days": 14,
+                    "required_inputs": parse_catalog_selection(required_input_ids, catalog_entries),
+                    "blocked_inputs": parse_catalog_selection(blocked_input_ids, catalog_entries),
+                }
+                created_pledge_id = create_buyer_export_lot(
+                    organisation_name=organisation_name,
+                    contact_name=contact_name,
+                    email=email or None,
+                    phone=phone or None,
+                    crop_type=crop_type,
+                    quantity_kg=float(quantity_kg or 0),
+                    target_price_per_kg=target_price_per_kg,
+                    needed_by_date=needed_by_date,
+                    notes=json.dumps(notes_payload, sort_keys=True),
+                )
+                success = True
+                message = f"Export lot created for {organisation_name}."
+                logger.info("Created new export lot id=%s for %s", created_pledge_id, organisation_name)
+
+        return render_template(
+            "export_lot_new.html",
+            message=message,
+            success=success,
+            created_pledge_id=created_pledge_id,
+            crop_options=crop_options,
+            catalog_entries=catalog_entries,
         )
 
     @app.route("/buyer-pledges/<int:pledge_id>/allocation", methods=["GET", "POST"])
@@ -330,6 +664,15 @@ def create_app() -> Flask:
             eligible_pledges=eligible_pledges,
             submitted_quantities=stored_quantities,
         )
+        visible_pledges = filter_and_sort_allocation_offers(
+            eligible_pledges,
+            country_filter=country_filter,
+            availability_filter=availability_filter,
+            rule_filter=rule_filter,
+            sort_by=sort_by,
+            hide_ineligible=hide_ineligible,
+        )
+        country_options = sorted({str(pledge.get("region", "")) for pledge in eligible_pledges if pledge.get("region")})
         can_export_reports = (
             str(buyer_pledge.get("pledge_status", "")).lower() == "fulfilled"
             or float(buyer_pledge.get("remaining_quantity_kg") or 0) <= 0
@@ -337,6 +680,8 @@ def create_app() -> Flask:
         submission_message = None
         if request.args.get("submitted") == "1":
             submission_message = "Allocation submitted."
+        if request.args.get("auto_submitted") == "1":
+            submission_message = "Auto-allocate and submit completed."
 
         if request.method == "POST":
             action = request.form.get("action", "").strip()
@@ -443,6 +788,69 @@ def create_app() -> Flask:
                         "Rejected allocation submit for buyer pledge id=%s because draft was empty or invalid",
                         pledge_id,
                     )
+            elif action == "auto_fill":
+                updated_quantities = auto_fill_allocation_quantities(
+                    stored_quantities,
+                    visible_pledges,
+                    float(draft_allocation["remaining_after_kg"]),
+                )
+                if updated_quantities == stored_quantities:
+                    submission_message = "No additional eligible supply was available for auto-fill."
+                    logger.info(
+                        "Auto-fill made no changes for buyer pledge id=%s because no eligible supply remained",
+                        pledge_id,
+                    )
+                else:
+                    stored_quantities = updated_quantities
+                    session[draft_session_key] = stored_quantities
+                    draft_allocation = build_draft_allocation(
+                        buyer_pledge=buyer_pledge,
+                        eligible_pledges=eligible_pledges,
+                        submitted_quantities=stored_quantities,
+                    )
+                    submission_message = "Auto-fill staged the remaining eligible supply."
+                    logger.info(
+                        "Auto-filled buyer pledge id=%s with %s staged row(s)",
+                        pledge_id,
+                        len(draft_allocation["selected_rows"]),
+                    )
+            elif action == "auto_fill_and_submit":
+                updated_quantities = auto_fill_allocation_quantities(
+                    stored_quantities,
+                    visible_pledges,
+                    float(draft_allocation["remaining_after_kg"]),
+                )
+                stored_quantities = updated_quantities
+                session[draft_session_key] = stored_quantities
+                draft_allocation = build_draft_allocation(
+                    buyer_pledge=buyer_pledge,
+                    eligible_pledges=eligible_pledges,
+                    submitted_quantities=stored_quantities,
+                )
+                if draft_allocation["selected_rows"] and not draft_allocation["errors"]:
+                    persist_confirmed_allocation(
+                        buyer_pledge_id=pledge_id,
+                        selected_rows=draft_allocation["selected_rows"],
+                    )
+                    session.pop(draft_session_key, None)
+                    return redirect(
+                        url_for(
+                            "build_allocation",
+                            pledge_id=pledge_id,
+                            hide_ineligible="1" if hide_ineligible else None,
+                            country=country_filter or None,
+                            availability=availability_filter or None,
+                            rule=rule_filter or None,
+                            sort=sort_by if sort_by != "priority" else None,
+                            submitted="1",
+                            auto_submitted="1",
+                        )
+                    )
+                submission_message = "Auto-fill staged the draft, but it could not be submitted."
+                logger.warning(
+                    "Auto-fill-and-submit could not complete for buyer pledge id=%s because the draft was empty or invalid",
+                    pledge_id,
+                )
             elif action in {"export_buyer_summary", "export_farm_summary"}:
                 if not can_export_reports:
                     submission_message = "Complete the batch before exporting reports."
@@ -472,6 +880,14 @@ def create_app() -> Flask:
                 eligible_pledges=eligible_pledges,
                 submitted_quantities=stored_quantities,
             )
+            visible_pledges = filter_and_sort_allocation_offers(
+                eligible_pledges,
+                country_filter=country_filter,
+                availability_filter=availability_filter,
+                rule_filter=rule_filter,
+                sort_by=sort_by,
+                hide_ineligible=hide_ineligible,
+            )
             logger.info(
                 "Draft allocation updated for buyer pledge id=%s with %s selected pledge(s)",
                 pledge_id,
@@ -488,16 +904,6 @@ def create_app() -> Flask:
                 buyer_remaining_kg=float(draft_allocation["remaining_after_kg"]),
                 available_quantity_kg=float(pledge.get("available_quantity_kg") or 0),
             )
-
-        visible_pledges = filter_and_sort_allocation_offers(
-            eligible_pledges,
-            country_filter=country_filter,
-            availability_filter=availability_filter,
-            rule_filter=rule_filter,
-            sort_by=sort_by,
-            hide_ineligible=hide_ineligible,
-        )
-        country_options = sorted({str(pledge.get("region", "")) for pledge in eligible_pledges if pledge.get("region")})
 
         return render_template(
             "build_allocation.html",
@@ -665,9 +1071,9 @@ def create_app() -> Flask:
             pledges=pledges,
         )
 
-    @app.route("/farms/<int:farm_id>/pledges/<int:pledge_id>")
+    @app.route("/farms/<int:farm_id>/pledges/<int:pledge_id>", methods=["GET", "POST"])
     def farm_pledge_detail(farm_id: int, pledge_id: int):
-        """Render a detailed page for one farm crop offer and its input logs."""
+        """Render a detailed page for one farm crop offer and its crop records."""
         logger.info("Loading farm pledge detail for farm id=%s pledge id=%s", farm_id, pledge_id)
         farm = get_farm_by_id(farm_id)
         if farm is None:
@@ -679,18 +1085,177 @@ def create_app() -> Flask:
             logger.warning("Pledge id=%s not found for farm id=%s", pledge_id, farm_id)
             abort(404)
 
-        input_logs = get_input_logs_for_pledge(farm_id, pledge_id)
+        crop_records = get_input_logs_for_pledge(farm_id, pledge_id)
+        input_catalog_entries = get_input_catalog_entries()
+        message = ""
+        success = False
+
+        if request.method == "POST":
+            action = request.form.get("action", "").strip()
+            if action == "add_input_log":
+                selected_catalog_id = request.form.get("input_catalog_id", "").strip()
+                quantity_raw = request.form.get("quantity", "").strip()
+                log_date = request.form.get("log_date", "").strip()
+                notes = request.form.get("notes", "").strip()
+
+                errors = []
+                if not selected_catalog_id.isdigit():
+                    errors.append("Please choose an active catalog product.")
+                if not quantity_raw:
+                    errors.append("Quantity is required.")
+
+                quantity = None
+                if quantity_raw:
+                    try:
+                        quantity = float(quantity_raw)
+                        if quantity <= 0:
+                            errors.append("Quantity must be greater than zero.")
+                    except ValueError:
+                        errors.append("Quantity must be a number.")
+
+                if not log_date:
+                    log_date = date.today().isoformat()
+                else:
+                    try:
+                        date.fromisoformat(log_date)
+                    except ValueError:
+                        errors.append("Log date must use YYYY-MM-DD format.")
+
+                if errors:
+                    message = " ".join(errors)
+                    logger.warning(
+                        "Crop record validation failed for farm id=%s pledge id=%s: %s",
+                        farm_id,
+                        pledge_id,
+                        message,
+                    )
+                else:
+                    catalog_entry = get_input_catalog_entry_by_id(int(selected_catalog_id))
+                    if catalog_entry is None or not catalog_entry.get("is_active"):
+                        message = "Please choose an active catalog product."
+                        logger.warning(
+                            "Rejected crop record creation for farm id=%s pledge id=%s because catalog entry was missing or inactive",
+                            farm_id,
+                            pledge_id,
+                        )
+                    else:
+                        create_farm_input_log(
+                            farmer_account_id=farm_id,
+                            farmer_pledge_id=pledge_id,
+                            input_catalog_id=int(selected_catalog_id),
+                            quantity=float(quantity or 0),
+                            log_date=log_date,
+                            notes=notes or None,
+                        )
+                        crop_records = get_input_logs_for_pledge(farm_id, pledge_id)
+                        success = True
+                        message = f"Added {catalog_entry['product_name']} to this crop offer."
+                        logger.info(
+                            "Added crop record for farm id=%s pledge id=%s using catalog id=%s",
+                            farm_id,
+                            pledge_id,
+                            selected_catalog_id,
+                        )
         logger.info(
-            "Rendering farm pledge detail for farm id=%s pledge id=%s with %s input log(s)",
+            "Rendering farm pledge detail for farm id=%s pledge id=%s with %s crop record(s)",
             farm_id,
             pledge_id,
-            len(input_logs),
+            len(crop_records),
         )
         return render_template(
             "farm_pledge_detail.html",
             farm=farm,
             pledge=pledge,
-            input_logs=input_logs,
+            crop_records=crop_records,
+            input_catalog_entries=input_catalog_entries,
+            message=message,
+            success=success,
+            today_iso=date.today().isoformat(),
+        )
+
+    @app.route("/farmers/register", methods=["GET", "POST"])
+    def register_farmer():
+        """Render and process the farmer registration form."""
+        logger.info("Loading farmer registration page")
+        message = ""
+        success = False
+
+        if request.method == "POST":
+            farm_name = request.form.get("farm_name", "").strip()
+            farmer_name = request.form.get("farmer_name", "").strip()
+            national_id = request.form.get("national_id", "").strip()
+            phone = request.form.get("phone", "").strip()
+            region = request.form.get("region", "").strip()
+            county = request.form.get("county", "").strip()
+            crop_type = request.form.get("crop_type", "").strip()
+            plot_size_ha = request.form.get("plot_size_ha", "").strip()
+            latitude_raw = request.form.get("latitude", "").strip()
+            longitude_raw = request.form.get("longitude", "").strip()
+
+            errors = []
+            if not farm_name:
+                errors.append("Farm name is required.")
+            if not farmer_name:
+                errors.append("Farmer name is required.")
+            if not national_id:
+                errors.append("National ID is required.")
+            if not phone:
+                errors.append("Phone number is required.")
+            if not region:
+                errors.append("Region is required.")
+            if not county:
+                errors.append("County is required.")
+            if not crop_type:
+                errors.append("Crop type is required.")
+
+            latitude = None
+            longitude = None
+            plot_size = None
+
+            if latitude_raw:
+                try:
+                    latitude = float(latitude_raw)
+                except ValueError:
+                    errors.append("Latitude must be a number.")
+
+            if longitude_raw:
+                try:
+                    longitude = float(longitude_raw)
+                except ValueError:
+                    errors.append("Longitude must be a number.")
+
+            if plot_size_ha:
+                try:
+                    plot_size = float(plot_size_ha)
+                    if plot_size <= 0:
+                        errors.append("Plot size must be greater than zero.")
+                except ValueError:
+                    errors.append("Plot size must be a number.")
+
+            if errors:
+                message = " ".join(errors)
+                logger.warning("Farmer registration failed validation: %s", message)
+            else:
+                register_farmer_account(
+                    farm_name=farm_name,
+                    farmer_name=farmer_name,
+                    national_id=national_id,
+                    phone=phone,
+                    region=region,
+                    county=county,
+                    crop_type=crop_type,
+                    plot_size_ha=plot_size,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+                success = True
+                message = f"{farmer_name} ({farm_name}) has been registered successfully."
+                logger.info("Registered new farmer: %s at %s", farmer_name, farm_name)
+
+        return render_template(
+            "farmer_register.html",
+            message=message,
+            success=success,
         )
 
     return app
@@ -701,4 +1266,9 @@ app = create_app()
 
 if __name__ == "__main__":
     logger.info("Starting development server")
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", os.environ.get("TRN_FARMER_TRACE_PORT", 5000))),
+        debug=True,
+        use_reloader=False,
+    )

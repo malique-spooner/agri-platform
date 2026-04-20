@@ -1,4 +1,4 @@
-Agri Platform Test Inventory
+TRN Farmer Trace Test Inventory
 Last updated: 25 March 2026
 
 Purpose
@@ -16,7 +16,7 @@ tests/pages/test_settings.py
 - test_settings_page_can_add_catalog_entry
   Confirms a new standardized input can be created through the settings form and persisted to the database.
 - test_settings_page_deactivates_used_catalog_entry
-  Confirms a catalog item already referenced by farm input logs is marked inactive rather than deleted.
+  Confirms a catalog item already referenced by crop input records is marked inactive rather than deleted.
 - test_settings_page_can_reset_database
   Confirms the reset action rebuilds the demo database and restores the seeded buyer-account count.
 
@@ -54,7 +54,7 @@ tests/pages/test_farms.py
 - test_farm_profile_page_returns_success
   Confirms a farm profile page loads with pledge information, location information, and the embedded map scaffold.
 - test_farm_pledge_detail_page_returns_success
-  Confirms a crop-offer detail page loads with the pledge-specific input log history table.
+  Confirms a crop-offer detail page loads with the pledge-specific crop record history table.
 - test_farm_pledge_detail_page_returns_404_for_unknown_pledge
   Confirms the app returns HTTP 404 for a pledge id that does not belong to the given farm.
 - test_farm_profile_page_returns_404_for_unknown_farm
@@ -136,7 +136,7 @@ tests/database/test_database_helpers.py
 - test_get_farmer_pledges_for_crop_only_returns_rows_with_remaining_supply
   Confirms fully allocated farmer offers are excluded from crop queries.
 - test_get_input_logs_for_pledge_ids_returns_logs_keyed_by_requested_ids
-  Confirms bulk input-log retrieval preserves the requested pledge-id shape and grouping.
+  Confirms bulk crop record retrieval preserves the requested pledge-id shape and grouping.
 - test_get_input_catalog_entries_returns_standardized_rows
   Confirms input catalog retrieval returns display-ready standardized entries.
 - test_create_input_catalog_entry_adds_new_row
@@ -181,13 +181,13 @@ tests/database/test_database.py
 - test_deadlines_do_not_precede_creation_dates
   Confirms buyer deadlines and farmer availability dates do not predate record creation.
 - test_generated_dates_stay_close_to_today_for_demo_use
-  Confirms generated dates stay close to the current operating period and input logs are not future-dated.
+  Confirms generated dates stay close to the current operating period and crop records are not future-dated.
 - test_input_logs_reference_matching_farmer_when_pledge_is_present
-  Confirms any pledge-linked input log belongs to the same farmer account as the linked pledge.
+  Confirms any pledge-linked crop record belongs to the same farmer account as the linked pledge.
 - test_generated_dataset_contains_dense_crop_input_history
   Confirms most crop offers have enough linked logs to make traceability pages useful.
 - test_input_logs_include_specific_product_and_method_details
-  Confirms input logs include the detailed metadata required for future buyer-rule matching.
+  Confirms crop records include the detailed metadata required for future buyer-rule matching.
 - test_persist_confirmed_allocation_writes_rows_and_updates_statuses
   Confirms confirmed allocation persistence inserts rows and refreshes buyer and farmer statuses.
 

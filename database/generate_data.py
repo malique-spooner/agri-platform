@@ -23,43 +23,24 @@ from database.setup_database import initialise_database
 logger = logging.getLogger(__name__)
 
 CROPS = [
-    "Tomatoes",
-    "Beans",
-    "Maize",
-    "Onions",
-    "Potatoes",
-    "Kale",
-    "Cabbage",
-    "Carrots",
-    "Spinach",
-    "Peppers",
-    "Avocados",
-    "Groundnuts",
-    "Soybeans",
-    "Sweet Potatoes",
+    "Arabica Coffee",
+    "Robusta Coffee",
 ]
-BUYER_CROP_WEIGHTS = [14, 13, 16, 9, 8, 6, 5, 5, 4, 5, 7, 8, 9, 8]
+BUYER_CROP_WEIGHTS = [70, 30]
 COUNTRY_PROFILES = {
     "Uganda": {
-        "counties": ["Wakiso", "Mbarara", "Gulu", "Mbale"],
+        "counties": ["Kampala", "Wakiso", "Mbale", "Mbarara"],
         "coordinates": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
-        "farmer_crop_weights": [17, 16, 14, 8, 5, 9, 5, 5, 6, 4, 3, 7, 4, 9],
-        "farm_size_range": (1.8, 34.0),
-        "quantity_multiplier": 0.85,
+        "farmer_crop_weights": [65, 35],
+        "farm_size_range": (0.2, 1.0),
+        "quantity_multiplier": 0.6,
     },
     "Kenya": {
-        "counties": ["Nakuru", "Kiambu", "Meru", "Machakos"],
-        "coordinates": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
-        "farmer_crop_weights": [11, 13, 9, 13, 11, 11, 10, 9, 5, 7, 10, 4, 8, 6],
-        "farm_size_range": (2.4, 48.0),
-        "quantity_multiplier": 1.0,
-    },
-    "Zambia": {
-        "counties": ["Lusaka", "Central", "Copperbelt", "Eastern"],
-        "coordinates": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
-        "farmer_crop_weights": [7, 10, 22, 8, 9, 4, 6, 4, 3, 10, 2, 8, 14, 11],
-        "farm_size_range": (4.0, 72.0),
-        "quantity_multiplier": 1.3,
+        "counties": ["Nakuru", "Kiambu", "Meru", "Nyeri"],
+        "coordinates": {"lat": (-1.15, 1.20), "lon": (36.20, 37.90)},
+        "farmer_crop_weights": [55, 45],
+        "farm_size_range": (0.3, 1.0),
+        "quantity_multiplier": 0.7,
     },
 }
 FIRST_NAMES = [
@@ -95,40 +76,40 @@ LAST_NAMES = [
     "Chebet",
 ]
 BUYER_SPOOF_NAMES = [
-    "Starbarks Coffee Collective",
-    "Costa Packet Roasters",
-    "Cocoa-Kalo Distributors",
-    "McDarnell Foods",
-    "SubKing Sandwich Supply",
-    "Pepsino Beverage Group",
-    "Burger Queen Kitchens",
-    "Taco Smell Catering",
-    "Dunkin Beans Trading",
-    "Nestleaf Pantry Co-op",
-    "Pringlish Snacks Network",
-    "KitNotKat Wholesale",
-    "KFG Meal Partners",
-    "Dominoh Pizza Hub",
-    "Red Grazing Coffee Ltd",
-    "Seven-Elevenish Stores",
-    "Wok to Wok Express",
-    "Amazin Fresh Markets",
-    "Ikea Feast Services",
-    "Lidll Bit More Foods",
+    "Kyagalanyi Coffee Ltd",
+    "Volcafe Uganda",
+    "Sucafina East Africa",
+    "Olam Agri Uganda",
+    "Cafico International",
+    "Ibero Uganda Ltd",
+    "Rwanda Trading Company",
+    "Great Lakes Coffee",
+    "Agri Evolve Kenya",
+    "Nairobi Coffee Exchange",
+    "Dormans Coffee Kenya",
+    "Equator Coffee Roasters",
+    "Kenya Planters Co-op",
+    "Mt Elgon Producers Ltd",
+    "Bugisu Cooperative Union",
+    "Kapchorwa Growers Assoc",
+    "Sipi Falls Estate",
+    "Rwenzori Mountain Coffee",
+    "Meru Farmers Collective",
+    "Kiambu Export Partners",
 ]
 FARM_PREFIXES = [
-    "Sunrise",
-    "Riverbend",
-    "Highland",
-    "Valley",
-    "Greenfield",
-    "Maple",
-    "Red Soil",
-    "Blue Sky",
-    "North Ridge",
-    "Golden Acre",
+    "Nakawa",
+    "Sipi",
+    "Elgon",
+    "Rwenzori",
+    "Bududa",
+    "Kapchorwa",
+    "Mbale",
+    "Kiambu",
+    "Nyeri",
+    "Meru",
 ]
-FARM_SUFFIXES = ["Farm", "Fields", "Holdings", "Acres", "Gardens"]
+FARM_SUFFIXES = ["Plot", "Shamba", "Farm", "Grove", "Garden"]
 INPUT_CATALOG_SEED = [
     {
         "input_category": "Pesticide",
@@ -561,7 +542,7 @@ def insert_buyer_pledges(
         for _ in range(pledge_count):
             created_at = buyer["created_at"] + timedelta(days=rng.randint(0, 30))
             crop_type = choose_crop(rng, BUYER_CROP_WEIGHTS)
-            quantity_kg = rng.randint(350, 3200)
+            quantity_kg = rng.randint(220, 1800)
             target_price_per_kg = maybe_none(rng, round(rng.uniform(0.8, 4.5), 2), 0.3)
             needed_by_date = maybe_none(
                 rng,
@@ -615,6 +596,7 @@ def insert_farmer_pledges(
     """Insert farmer pledges with realistic supply variation."""
     zero_indexes = set(rng.sample(range(len(farmers)), k=min(max(1, len(farmers) // 8), len(farmers))))
     pledges: list[dict[str, object]] = []
+    boosted_crops: set[str] = set()
     for index, farmer in enumerate(farmers):
         pledge_count = choose_pledge_count(rng, max_pledges, zero_indexes, index)
         farmer_profile = COUNTRY_PROFILES[str(farmer["region"])]
@@ -626,10 +608,13 @@ def insert_farmer_pledges(
             else:
                 created_at = creation_window_start + timedelta(
                     days=rng.randint(0, (creation_window_end - creation_window_start).days)
-                )
+            )
             crop_type = choose_crop(rng, farmer_profile["farmer_crop_weights"])
             hectare_factor = max(float(farmer["total_hectares"]) * rng.uniform(25, 85), 120)
             quantity_kg = int(round(hectare_factor * float(farmer_profile["quantity_multiplier"])))
+            if crop_type not in boosted_crops:
+                quantity_kg = max(quantity_kg, 3600)
+                boosted_crops.add(crop_type)
             asking_price_per_kg = maybe_none(rng, round(rng.uniform(0.7, 4.0), 2), 0.25)
             available_from_date = maybe_none(
                 rng,
@@ -722,81 +707,207 @@ def insert_allocations(
         farmer_by_crop.setdefault(str(pledge["crop_type"]), []).append(pledge)
         remaining_supply[int(pledge["farmer_pledge_id"])] = int(pledge["quantity_kg"])
 
-    mode_cycle = ["open", "partial", "fulfilled"]
-    for index, buyer_pledge in enumerate(sorted(buyer_pledges, key=lambda item: int(item["buyer_pledge_id"]))):
-        crop_type = str(buyer_pledge["crop_type"])
-        demand_quantity = int(buyer_pledge["quantity_kg"])
-        candidate_pledges = [
+    sorted_buyers = sorted(buyer_pledges, key=lambda item: int(item["buyer_pledge_id"]))
+    if not sorted_buyers:
+        return
+
+    allocation_rows: list[tuple[int, int, int, str]] = []
+
+    def pick_farmer(crop_type: str, exclude: set[int] | None = None) -> dict[str, object] | None:
+        candidates = [
             pledge
             for pledge in farmer_by_crop.get(crop_type, [])
             if remaining_supply[int(pledge["farmer_pledge_id"])] > 0
+            and (exclude is None or int(pledge["farmer_pledge_id"]) not in exclude)
         ]
-        rng.shuffle(candidate_pledges)
-        max_available = sum(remaining_supply[int(pledge["farmer_pledge_id"])] for pledge in candidate_pledges)
-        target_total = build_allocation_target(rng, demand_quantity, max_available, mode_cycle[index % len(mode_cycle)])
-        remaining_target = target_total
+        if not candidates:
+            return None
+        return max(candidates, key=lambda pledge: remaining_supply[int(pledge["farmer_pledge_id"])] )
 
-        while remaining_target > 0 and candidate_pledges:
-            farmer_pledge = candidate_pledges.pop()
-            farmer_pledge_id = int(farmer_pledge["farmer_pledge_id"])
-            available_quantity = remaining_supply[farmer_pledge_id]
-            max_chunk = min(available_quantity, remaining_target)
-            allocation_quantity = max_chunk if not candidate_pledges else rng.randint(1, max_chunk)
-            allocation_created_at = max(
-                datetime.fromisoformat(str(buyer_pledge["created_at"])),
-                datetime.fromisoformat(str(farmer_pledge["created_at"])),
-            ) + timedelta(days=rng.randint(0, 45))
-            connection.execute(
-                """
-                INSERT INTO pledge_allocations (
-                    buyer_pledge_id,
-                    farmer_pledge_id,
-                    allocated_quantity_kg,
-                    allocation_status,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?)
-                """,
+    fulfilled_buyer_id: int | None = None
+    partial_buyer_id: int | None = None
+    open_buyer_id: int | None = None
+
+    # Fulfilled buyer: allocate full demand if possible.
+    for buyer in sorted_buyers:
+        farmer = pick_farmer(str(buyer["crop_type"]))
+        if farmer is None:
+            continue
+        farmer_id = int(farmer["farmer_pledge_id"])
+        demand = int(buyer["quantity_kg"])
+        if remaining_supply[farmer_id] >= demand:
+            buyer_id = int(buyer["buyer_pledge_id"])
+            allocation_rows.append(
                 (
-                    buyer_pledge["buyer_pledge_id"],
-                    farmer_pledge_id,
-                    allocation_quantity,
-                    rng.choice(["proposed", "confirmed"]),
-                    iso_timestamp(allocation_created_at),
+                    buyer_id,
+                    farmer_id,
+                    demand,
+                    iso_timestamp(
+                        max(
+                            datetime.fromisoformat(str(buyer["created_at"])),
+                            datetime.fromisoformat(str(farmer["created_at"])),
+                        )
+                        + timedelta(days=1)
+                    ),
+                )
+            )
+            remaining_supply[farmer_id] -= demand
+            buyer_allocated[buyer_id] += demand
+            farmer_allocated[farmer_id] += demand
+            fulfilled_buyer_id = buyer_id
+            break
+
+    # Partial buyer: allocate some but not all.
+    for buyer in sorted_buyers:
+        buyer_id = int(buyer["buyer_pledge_id"])
+        if buyer_id == fulfilled_buyer_id:
+            continue
+        farmer = pick_farmer(str(buyer["crop_type"]))
+        if farmer is None:
+            continue
+        farmer_id = int(farmer["farmer_pledge_id"])
+        demand = int(buyer["quantity_kg"])
+        available = remaining_supply[farmer_id]
+        quantity = max(1, min(available, max(1, demand // 3)))
+        if 0 < quantity < demand:
+            allocation_rows.append(
+                (
+                    buyer_id,
+                    farmer_id,
+                    quantity,
+                    iso_timestamp(
+                        max(
+                            datetime.fromisoformat(str(buyer["created_at"])),
+                            datetime.fromisoformat(str(farmer["created_at"])),
+                        )
+                        + timedelta(days=2)
+                    ),
+                )
+            )
+            remaining_supply[farmer_id] -= quantity
+            buyer_allocated[buyer_id] += quantity
+            farmer_allocated[farmer_id] += quantity
+            partial_buyer_id = buyer_id
+            break
+
+    # Open buyer: leave at least one without allocations.
+    for buyer in sorted_buyers:
+        buyer_id = int(buyer["buyer_pledge_id"])
+        if buyer_id not in {fulfilled_buyer_id, partial_buyer_id}:
+            open_buyer_id = buyer_id
+            break
+
+    # Optional small allocations for the rest, but never to the open buyer.
+    reserved_ids = {bid for bid in (fulfilled_buyer_id, partial_buyer_id, open_buyer_id) if bid is not None}
+    for buyer in sorted_buyers:
+        buyer_id = int(buyer["buyer_pledge_id"])
+        if buyer_id in reserved_ids:
+            continue
+        farmer = pick_farmer(str(buyer["crop_type"]))
+        if farmer is None:
+            continue
+        farmer_id = int(farmer["farmer_pledge_id"])
+        available = remaining_supply[farmer_id]
+        if available <= 0:
+            continue
+        demand = int(buyer["quantity_kg"])
+        quantity = min(available, max(1, demand // 4))
+        if quantity <= 0:
+            continue
+        allocation_rows.append(
+            (
+                buyer_id,
+                farmer_id,
+                quantity,
+                iso_timestamp(
+                    max(
+                        datetime.fromisoformat(str(buyer["created_at"])),
+                        datetime.fromisoformat(str(farmer["created_at"])),
+                    )
+                    + timedelta(days=3)
                 ),
             )
-            remaining_supply[farmer_pledge_id] -= allocation_quantity
-            remaining_target -= allocation_quantity
-            buyer_allocated[int(buyer_pledge["buyer_pledge_id"])] += allocation_quantity
-            farmer_allocated[farmer_pledge_id] += allocation_quantity
+        )
+        remaining_supply[farmer_id] -= quantity
+        buyer_allocated[buyer_id] += quantity
+        farmer_allocated[farmer_id] += quantity
+
+    for buyer_id, farmer_id, quantity, created_at in allocation_rows:
+        connection.execute(
+            """
+            INSERT INTO pledge_allocations (
+                buyer_pledge_id,
+                farmer_pledge_id,
+                allocated_quantity_kg,
+                allocation_status,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (buyer_id, farmer_id, quantity, "confirmed", created_at),
+        )
 
     for pledge in buyer_pledges:
         buyer_pledge_id = int(pledge["buyer_pledge_id"])
         allocated_quantity = buyer_allocated[buyer_pledge_id]
         quantity_kg = int(pledge["quantity_kg"])
-        if allocated_quantity == 0:
-            status = "open"
-        elif allocated_quantity >= quantity_kg:
-            status = "fulfilled"
-        else:
-            status = "partial"
-        connection.execute(
-            "UPDATE buyer_pledges SET pledge_status = ? WHERE buyer_pledge_id = ?",
-            (status, buyer_pledge_id),
-        )
+        status = "open" if allocated_quantity == 0 else "fulfilled" if allocated_quantity == quantity_kg else "partial"
+        connection.execute("UPDATE buyer_pledges SET pledge_status = ? WHERE buyer_pledge_id = ?", (status, buyer_pledge_id))
 
     for pledge in farmer_pledges:
         farmer_pledge_id = int(pledge["farmer_pledge_id"])
         allocated_quantity = farmer_allocated[farmer_pledge_id]
         quantity_kg = int(pledge["quantity_kg"])
-        if allocated_quantity == 0:
-            status = "available"
-        elif allocated_quantity >= quantity_kg:
-            status = "allocated"
-        else:
-            status = "partial"
+        status = "available" if allocated_quantity == 0 else "allocated" if allocated_quantity == quantity_kg else "partial"
+        connection.execute("UPDATE farmer_pledges SET pledge_status = ? WHERE farmer_pledge_id = ?", (status, farmer_pledge_id))
+
+
+def seed_auto_submit_edge_cases(connection: sqlite3.Connection) -> None:
+    """Adjust a couple of buyer lots so the demo exposes auto-submit edge cases."""
+    hard_lot = connection.execute(
+        """
+        SELECT buyer_pledge_id, crop_type
+        FROM buyer_pledges
+        WHERE pledge_status = 'open'
+        ORDER BY
+            CASE WHEN needed_by_date IS NULL THEN 1 ELSE 0 END,
+            COALESCE(needed_by_date, '9999-12-31') ASC,
+            quantity_kg DESC,
+            buyer_pledge_id ASC
+        LIMIT 1
+        """
+    ).fetchone()
+    if hard_lot is not None:
+        hard_lot_id, hard_crop_type = hard_lot
+        hard_notes = {
+            "priority": "standard",
+            "organic_preference": False,
+            "delivery_window_days": 7,
+            "crop_type": hard_crop_type,
+            "required_inputs": [
+                {
+                    "input_type": "Post-harvest",
+                    "product_name": "Solar drying tunnel",
+                    "brand_name": "TraceDry",
+                }
+            ],
+            "blocked_inputs": [
+                {
+                    "input_type": "Pesticide",
+                    "product_name": "Pyrethrin spray",
+                    "brand_name": "CropShield",
+                }
+            ],
+        }
         connection.execute(
-            "UPDATE farmer_pledges SET pledge_status = ? WHERE farmer_pledge_id = ?",
-            (status, farmer_pledge_id),
+            """
+            UPDATE buyer_pledges
+            SET
+                quantity_kg = MAX(quantity_kg, 2200),
+                needed_by_date = date('now', '+2 day'),
+                notes = ?
+            WHERE buyer_pledge_id = ?
+            """,
+            (json.dumps(hard_notes, sort_keys=True), hard_lot_id),
         )
 
 
@@ -1200,6 +1311,7 @@ def generate_dataset(args: argparse.Namespace) -> None:
         )
         farmer_pledges = insert_farmer_pledges(connection, rng, farmers, args.max_farmer_pledges)
         insert_allocations(connection, rng, buyer_pledges, farmer_pledges)
+        seed_auto_submit_edge_cases(connection)
         insert_farm_input_logs(connection, rng, farmers, farmer_pledges, input_catalog, args.max_input_logs, now)
         connection.commit()
 

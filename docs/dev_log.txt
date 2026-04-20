@@ -11,9 +11,9 @@ The allocation builder was then improved in several iterative steps. The staging
 
 The matching and filtering experience on the allocation page was also reworked. The `hide ineligible crop offers` toggle now behaves correctly even when the underlying form submits both a hidden `0` value and a checked `1` value, which was previously causing inconsistent behaviour. The meaning of the toggle was also refined so it hides only truly blocked offers rather than removing every offer that still requires review. This keeps the page more useful operationally because borderline but potentially fixable offers remain visible to the aggregator.
 
-The settings feature was expanded into a more meaningful data-governance tool. A normalized `input_catalog` table was introduced so pesticides, fertilisers, irrigation events, soil amendments, and other standardized production inputs are defined once and then referenced consistently by crop input logs. This supports future buyer-rule matching far better than relying on loose free-text naming. The settings page now allows catalog entries to be viewed, added, removed or deactivated, and the database can also be reset from a dedicated utility section separate from the catalog controls.
+The settings feature was expanded into a more meaningful data-governance tool. A normalized `input_catalog` table was introduced so pesticides, fertilisers, irrigation events, soil amendments, and other standardized production inputs are defined once and then referenced consistently by crop input records. This supports future buyer-rule matching far better than relying on loose free-text naming. The settings page now allows catalog entries to be viewed, added, removed or deactivated, and the database can also be reset from a dedicated utility section separate from the catalog controls.
 
-The synthetic dataset was updated multiple times to better support the workflow. Buyer names were reduced to a smaller set of spoofed but recognisable organisations, geographic data was kept inside Uganda, Kenya, and Zambia with valid coordinates and county-country alignment, and crop histories were made richer and more structured. Later, buyer criteria generation was loosened so the allocation builder would not become unrealistically strict, and allocation generation was corrected so the same farm offer is no longer split into many repeated allocation rows for one buyer pledge. This made the farmer participation report and allocation builder feel more believable.
+The synthetic dataset was updated multiple times to better support the workflow. Buyer names were reduced to a smaller set of spoofed but recognisable organisations, geographic data was kept inside Uganda, Kenya, and Kenya with valid coordinates and county-country alignment, and crop histories were made richer and more structured. Later, buyer criteria generation was loosened so the allocation builder would not become unrealistically strict, and allocation generation was corrected so the same farm offer is no longer split into many repeated allocation rows for one buyer pledge. This made the farmer participation report and allocation builder feel more believable.
 
 PDF reporting was then implemented as a real system feature rather than a placeholder. The allocation page now exports two report perspectives:
 - a buyer-oriented batch report
@@ -23,7 +23,7 @@ These reports are generated dynamically from live database data using a reusable
 
 The PDF structure itself was then refined in response to usability review. In the buyer report, unnecessary sections such as batch activity and the earlier traceability-summary block were removed. Instead, the report now keeps the batch composition table and ends with one consolidated all-farms input-log table showing the actual records that support the batch: farm, offer, date, input, quantity, method, and notes. In the farmer participation report, contribution rows were made cleaner by aggregating repeated records per farm offer, which prevents the output from looking fragmented or misleading.
 
-The visual identity of the prototype was also formalized. A brand profile for “Malique’s Farm” was introduced, with a brand-guidelines document, a brand manifest JSON file, and shared visual assets in the static folder. This brand layer was then applied to the web shell and page styling so the interface now has a more coherent, modern, Apple-inspired feel rather than a generic academic prototype appearance.
+The visual identity of the prototype was also formalized. A brand profile for TRN Farmer Trace was introduced, with a brand-guidelines document, a brand manifest JSON file, and shared visual assets in the static folder. This brand layer was then applied to the web shell and page styling so the interface now has a more coherent, modern, Apple-inspired feel rather than a generic academic prototype appearance.
 
 Why this was done:
 These changes were necessary because the project had reached a stage where raw correctness alone was no longer enough. The prototype needed to demonstrate that it can communicate structure, trust, and traceability through both the interface and the generated system artifacts. The allocation flow in particular had to move from “it technically works” to “it is understandable, auditable, and usable by an aggregator.”
@@ -165,7 +165,7 @@ The buyer pledge homepage was reworked into a more compact aggregator queue with
 
 The allocation workflow was then promoted from placeholder templates into a real server-rendered flow. A new allocation builder page was connected to buyer pledges, eligible farm pledges are filtered by crop and buyer criteria, and a staging model was introduced so the aggregator can add or remove farm contributions before committing them. Submission is now wired through to the SQLite database, which means confirmed allocation rows are inserted into `pledge_allocations` and the related buyer and farmer pledge statuses are recalculated immediately after submission. The allocation progress bar was also refined so it distinguishes between already submitted quantities, currently staged quantities, and remaining unmet demand.
 
-The synthetic dataset was rebalanced to make the prototype easier to use during demonstrations. Instead of a much larger and more repetitive dataset, generation is now centred on exactly 20 buyer pledges and a smaller supporting set of farmers, farmer pledges, allocations, and crop input logs. Buyer organisation names were replaced with spoofed, recognisable brand-inspired names to make the data easier to scan and remember. This reduced clutter on the buyer and allocation pages while still leaving enough variation to demonstrate workflow logic.
+The synthetic dataset was rebalanced to make the prototype easier to use during demonstrations. Instead of a much larger and more repetitive dataset, generation is now centred on exactly 20 buyer pledges and a smaller supporting set of farmers, farmer pledges, allocations, and crop input records. Buyer organisation names were replaced with spoofed, recognisable brand-inspired names to make the data easier to scan and remember. This reduced clutter on the buyer and allocation pages while still leaving enough variation to demonstrate workflow logic.
 
 Placeholder files that were confirmed to have no role in the live Flask app were removed from the project. This included obsolete allocation placeholder templates, placeholder static assets, and the unused `home.html` template once `/` had been fully committed as a redirect to the buyer pledge queue. The repository structure now reflects the actual running prototype more closely.
 
@@ -230,7 +230,7 @@ Date:
 2026-03-24
 
 Task:
-Implemented the aggregator-facing pledge and farm browsing workflow, including buyer pledge management, a simplified farm directory, farm profile drill-down, African coordinate-backed map display, and a more structured crop input log model.
+Implemented the aggregator-facing pledge and farm browsing workflow, including buyer pledge management, a simplified farm directory, farm profile drill-down, African coordinate-backed map display, and a more structured crop input record model.
 
 What changed:
 The homepage was simplified so that `/` now redirects directly to the buyer pledge management view. The buyer pledge page was redesigned from a plain listing into a clearer aggregator demand view with status-grouped sections for open, partially fulfilled, and fulfilled demand. The page now surfaces progress more intentionally, including fulfilment bars for partially fulfilled pledges, and reduces front-page clutter so the user can scan demand more quickly before drilling into later steps of the workflow.
@@ -241,12 +241,12 @@ Farm profiles were then extended into a more useful drill-down surface. Each far
 
 The crop-offer detail workflow was also introduced. Rather than showing generic recent logs at the bottom of the farm profile, each production pledge now links to its own crop-offer detail page where the pledge-specific input history is displayed. This made the compliance and traceability information more logically tied to the exact crop offer being reviewed.
 
-Finally, the farm input log system was made more future-proof. Previously, logs only stored a broad `input_type`, which would not be sufficient for matching future buyer criteria such as required pesticides, banned fertiliser brands, or required application methods. The schema, synthetic data generator, retrieval helpers, and pledge detail page were updated so each log now stores a broad category together with more specific attributes: `product_name`, `brand_name`, and `application_method`. The generated data was also expanded substantially so crop offers now carry much richer input histories.
+Finally, the farm crop record system was made more future-proof. Previously, records only stored a broad `input_type`, which would not be sufficient for matching future buyer criteria such as required pesticides, banned fertiliser brands, or required application methods. The schema, synthetic data generator, retrieval helpers, and pledge detail page were updated so each record now stores a broad category together with more specific attributes: `product_name`, `brand_name`, and `application_method`. The generated data was also expanded substantially so crop offers now carry much richer record histories.
 
 Why this was done:
 These changes were needed to move the prototype closer to the actual aggregator workflow described in the report. The earlier pages technically displayed data, but they were too dense at the wrong level and not sufficiently structured for practical decision-making. The redesign separates scanning from inspection: the buyer pledge page is now for prioritising demand, the farm directory is for shortlisting suppliers, the farm profile is for reviewing a farm at a higher level, and the crop-offer detail page is where pledge-specific compliance context lives.
 
-The input log redesign was especially important because the future allocation workflow depends on comparing buyer requirements with production history. A generic input label is not enough for that. Adding structured product, brand, and method fields creates a clearer path toward matching buyer criteria against actual production activity later in development.
+The crop record redesign was especially important because the future allocation workflow depends on comparing buyer requirements with production history. A generic input label is not enough for that. Adding structured product, brand, and method fields creates a clearer path toward matching buyer criteria against actual production activity later in development.
 
 Design reasoning:
 The frontend changes follow a drill-down design principle. High-level pages should help the aggregator decide where to look next, not force them to process all available detail at once. This is why the buyer pledge page and farm directory were simplified while the pledge-specific crop detail page was made more informative.
@@ -256,7 +256,7 @@ The map is intentionally modest at this stage. Its current purpose is visual ori
 The updated input-log structure preserves the original broad `input_type` category while extending it with more exact identifiers. This is preferable to replacing the category entirely because future rules may need to match at different levels of specificity. For example, a buyer may forbid all pesticides at the category level, or forbid only a particular product or brand within that category.
 
 Problems encountered:
-The farm profile and crop-offer flow required a restructuring of where log history was displayed. This meant the earlier “recent input logs” section on the farm profile had to be removed to avoid duplicating information at the wrong level.
+The farm profile and crop-offer flow required a restructuring of where record history was displayed. This meant the earlier “recent input records” section on the farm profile had to be removed to avoid duplicating information at the wrong level.
 
 When the new structured input-log fields were added, a page-level test exposed a usability issue: if a crop offer had no logs yet, the detail page removed the table entirely, which meant the user could not still see the intended log structure. This was corrected by always rendering the table headers and using an empty-state row inside the table body when no records exist.
 
@@ -321,7 +321,7 @@ Database testing was expanded significantly. The suite now checks:
 - NULL coverage for optional fields,
 - JSON validity in generated buyer notes,
 - temporal consistency for pledge dates,
-- and input log consistency with farmer/pledge relationships.
+- and crop record consistency with farmer/pledge relationships.
 
 Why this was done:
 The earlier structure contained redundant database assets spread across multiple places: SQL schema files, sample data files, setup scripts, and generated data paths. That made the project harder to understand and maintain. Consolidating the database workflow into one folder reduces duplication and makes it clearer how the prototype database is created, populated, and validated.

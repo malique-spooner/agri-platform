@@ -9,19 +9,16 @@ from logic.database_helpers import get_all_buyer_pledges, get_all_farms, persist
 SUPPORTED_AFRICAN_COUNTRIES = {
     "Kenya",
     "Uganda",
-    "Zambia",
 }
 
 COUNTRY_COORDINATE_RANGES = {
-    "Kenya": {"lat": (-4.75, 4.62), "lon": (33.91, 41.90)},
+    "Kenya": {"lat": (-1.15, 1.20), "lon": (36.20, 37.90)},
     "Uganda": {"lat": (-1.48, 4.23), "lon": (29.57, 35.04)},
-    "Zambia": {"lat": (-18.08, -8.20), "lon": (21.99, 33.70)},
 }
 
 COUNTRY_COUNTIES = {
-    "Kenya": {"Nakuru", "Kiambu", "Meru", "Machakos"},
-    "Uganda": {"Wakiso", "Mbarara", "Gulu", "Mbale"},
-    "Zambia": {"Lusaka", "Central", "Copperbelt", "Eastern"},
+    "Kenya": {"Nakuru", "Kiambu", "Meru", "Nyeri"},
+    "Uganda": {"Kampala", "Wakiso", "Mbale", "Mbarara"},
 }
 
 
@@ -225,7 +222,7 @@ def test_generated_data_contains_optional_null_fields(test_database_path):
 
 
 def test_farm_input_logs_reference_the_normalized_catalog(test_database_path):
-    """Every generated input log should point back to a standardized catalog entry."""
+    """Every generated crop record should point back to a standardized catalog entry."""
     with sqlite3.connect(test_database_path) as connection:
         missing_links = connection.execute(
             "SELECT COUNT(*) FROM farm_input_logs WHERE input_catalog_id IS NULL"
@@ -252,12 +249,12 @@ def test_generated_farm_coordinates_are_in_supported_african_countries(test_data
         assert bounds["lon"][0] <= longitude <= bounds["lon"][1]
 
 
-def test_farm_directory_dataset_only_uses_three_supported_countries(test_database_path):
-    """The demo dataset should stay inside the configured three-country operating region."""
+def test_farm_directory_dataset_only_uses_supported_countries(test_database_path):
+    """The demo dataset should stay inside Uganda and Kenya."""
     farms = get_all_farms()
 
     assert farms
-    assert {farm["region"] for farm in farms} == SUPPORTED_AFRICAN_COUNTRIES
+    assert {farm["region"] for farm in farms}.issubset(SUPPORTED_AFRICAN_COUNTRIES)
 
 
 def test_buyer_pledge_notes_are_valid_json(test_database_path):

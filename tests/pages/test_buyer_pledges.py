@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import app as app_module
 
 
@@ -10,7 +12,7 @@ def make_pledge(**overrides):
     pledge = {
         "buyer_pledge_id": 1,
         "organisation_name": "Test Buyer",
-        "crop_type": "Beans",
+        "crop_type": "Arabica Coffee",
         "quantity_kg": 1500,
         "allocated_quantity_kg": 0,
         "remaining_quantity_kg": 1500,
@@ -47,13 +49,172 @@ def test_buyer_pledges_page_returns_success(client):
     response = client.get("/buyer-pledges")
 
     assert response.status_code == 200
-    assert b"Buyer Pledges" in response.data
+    assert b"Export Lots" in response.data
+    assert b"Add export lot" in response.data
+    assert b"Total lots" in response.data
     assert b"Selected Pledge" in response.data
     assert b"Required" in response.data
     assert b"Blocked" in response.data
     assert b"Review eligible farms" in response.data
+    assert b"Auto-allocate &amp; submit" in response.data
     assert b"/allocation" in response.data
     assert b'data-pledge-id="' in response.data
+
+
+def test_buyer_pledges_page_auto_allocate_and_submit_returns_to_same_page(client, monkeypatch):
+    """The one-click buyer-page action should redirect back to the buyer pledges page."""
+    monkeypatch.setattr(
+        app_module,
+        "build_auto_allocate_preview",
+        lambda buyer_pledge: (True, "Auto-fill can fully submit this lot with 1500 kg of eligible supply.", 1500),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "auto_allocate_and_submit_buyer_pledge",
+        lambda pledge_id: (True, f"Auto-allocate and submit completed for {pledge_id}."),
+    )
+
+    response = client.post(
+        "/buyer-pledges",
+        data={"action": "auto_fill_and_submit", "selected_pledge_id": "1473"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/buyer-pledges?selected=")
+    assert "message=Auto-allocate+and+submit+completed" in response.headers["Location"]
+
+
+def test_auto_allocate_and_submit_buyer_pledge_submits_selected_actionable_pledge(client, monkeypatch):
+    """A ready selected pledge should auto-fill and submit in one step."""
+    monkeypatch.setattr(
+        app_module,
+        "get_all_buyer_pledges",
+        lambda: [
+            make_pledge(
+                buyer_pledge_id=1473,
+                organisation_name="Ready Buyer",
+                crop_type="Arabica Coffee",
+                pledge_status="open",
+                display_status="Not started",
+                allocated_quantity_kg=0,
+                remaining_quantity_kg=1500,
+                fulfillment_percent=0,
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_buyer_pledge_by_id",
+        lambda pledge_id: make_pledge(
+            buyer_pledge_id=pledge_id,
+            organisation_name="Ready Buyer",
+            crop_type="Arabica Coffee",
+            pledge_status="open",
+            display_status="Not started",
+            allocated_quantity_kg=0,
+            remaining_quantity_kg=1500,
+            fulfillment_percent=0,
+        ),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledges_for_crop",
+        lambda _: [
+            {
+                "farmer_pledge_id": 11,
+                "farmer_account_id": 3,
+                "farm_name": "Riverbend Farm",
+                "farmer_name": "David Otieno",
+                "county": "Nakuru",
+                "region": "Kenya",
+                "available_quantity_kg": 1500,
+                "available_from_date": "2026-06-01",
+                "asking_price_per_kg": 1.7,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: []})
+    monkeypatch.setattr(
+        app_module,
+        "enrich_eligible_pledges_with_criteria",
+        lambda buyer_criteria, eligible_pledges, logs_by_pledge_id: eligible_pledges,
+    )
+    persisted = []
+
+    def fake_persist_confirmed_allocation(buyer_pledge_id, selected_rows):
+        persisted.append((buyer_pledge_id, selected_rows))
+
+    monkeypatch.setattr(app_module, "persist_confirmed_allocation", fake_persist_confirmed_allocation)
+
+    success, message = app_module.auto_allocate_and_submit_buyer_pledge(1473)
+
+    assert success is True
+    assert message == "Auto-allocate and submit completed."
+    assert persisted
+    assert persisted[0][0] == 1473
+
+
+def test_buyer_pledges_page_greys_out_auto_submit_when_supply_is_insufficient(client, monkeypatch):
+    """The buyer-page auto-submit button should disable when eligible supply cannot cover demand."""
+    monkeypatch.setattr(
+        app_module,
+        "get_all_buyer_pledges",
+        lambda: [
+            make_pledge(
+                buyer_pledge_id=1473,
+                organisation_name="Hard Lot",
+                crop_type="Arabica Coffee",
+                pledge_status="open",
+                display_status="Not started",
+                remaining_quantity_kg=1500,
+                quantity_kg=1500,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledges_for_crop",
+        lambda _: [
+            {
+                "farmer_pledge_id": 11,
+                "farmer_account_id": 3,
+                "farm_name": "Riverbend Farm",
+                "farmer_name": "David Otieno",
+                "county": "Nakuru",
+                "region": "Kenya",
+                "available_quantity_kg": 250,
+                "available_from_date": "2026-06-01",
+                "asking_price_per_kg": 1.7,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: []})
+    monkeypatch.setattr(
+        app_module,
+        "enrich_eligible_pledges_with_criteria",
+        lambda buyer_criteria, eligible_pledges, logs_by_pledge_id: eligible_pledges,
+    )
+
+    response = client.get("/buyer-pledges?selected=1473")
+
+    assert response.status_code == 200
+    assert b"Only 250 kg of eligible supply is available for 1500 kg remaining." in response.data
+    assert b"disabled" in response.data
 
 
 def test_buyer_pledges_page_renders_new_status_labels_not_old_section_titles(client):
@@ -123,7 +284,7 @@ def test_buyer_pledges_page_uses_selected_query_param_for_detail_panel(client, m
             make_pledge(
                 buyer_pledge_id=2,
                 organisation_name="Second Buyer",
-                crop_type="Tomatoes",
+                crop_type="Arabica Coffee",
                 pledge_status="partial",
                 display_status="In progress",
                 allocated_quantity_kg=500,
@@ -136,7 +297,7 @@ def test_buyer_pledges_page_uses_selected_query_param_for_detail_panel(client, m
     response_text = client.get("/buyer-pledges?selected=2").get_data(as_text=True)
 
     assert "Second Buyer" in response_text
-    assert "Tomatoes" in response_text
+    assert "Arabica Coffee" in response_text
     assert "33.3% fulfilled" in response_text
 
 
@@ -190,12 +351,12 @@ def test_buyer_pledges_page_filters_rows_by_search_and_crop(client, monkeypatch)
         app_module,
         "get_all_buyer_pledges",
         lambda: [
-            make_pledge(organisation_name="Alpha Foods", crop_type="Beans"),
-            make_pledge(buyer_pledge_id=2, organisation_name="Beta Markets", crop_type="Tomatoes"),
+            make_pledge(organisation_name="Alpha Foods", crop_type="Arabica Coffee"),
+            make_pledge(buyer_pledge_id=2, organisation_name="Beta Markets", crop_type="Robusta Coffee"),
         ],
     )
 
-    response = client.get("/buyer-pledges?q=beta&crop=Tomatoes")
+    response = client.get("/buyer-pledges?q=beta&crop=Robusta Coffee")
 
     assert b"Beta Markets" in response.data
     assert b"Alpha Foods" not in response.data
@@ -210,3 +371,121 @@ def test_buyer_pledges_page_renders_empty_state_when_filters_remove_all_rows(cli
     assert response.status_code == 200
     assert b"No buyer pledges match the current filters." in response.data
     assert b"Select a buyer pledge from the table to review its details and next steps." in response.data
+
+
+def test_export_lot_creation_page_returns_success(client):
+    """The export lot creation page should render a buyer-demand form."""
+    response = client.get("/export-lots/new")
+
+    assert response.status_code == 200
+    assert b"Create Export Lot" in response.data
+    assert b"Create export lot" in response.data
+    assert b"Quantity needed" in response.data
+    assert b"Required inputs" in response.data
+    assert b"Blocked inputs" in response.data
+
+
+def test_export_lot_creation_page_can_create_a_new_lot(client, test_database_path):
+    """Posting a new export lot should persist both buyer account and buyer pledge rows."""
+    with sqlite3.connect(test_database_path) as connection:
+        catalog_rows = [
+            row
+            for row in connection.execute(
+                """
+                SELECT input_catalog_id, product_name
+                FROM input_catalog
+                ORDER BY input_catalog_id
+                LIMIT 2
+                """
+            ).fetchall()
+        ]
+
+    response = client.post(
+        "/export-lots/new",
+        data={
+            "organisation_name": "Trace Roast Ltd",
+            "contact_name": "Martha Wanjiku",
+            "email": "ops@traceroast.example",
+            "phone": "+254 700 123456",
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": "900",
+            "target_price_per_kg": "2.40",
+            "needed_by_date": "2026-07-15",
+            "required_input_ids": str(catalog_rows[0][0]),
+            "blocked_input_ids": str(catalog_rows[1][0]),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Export lot created for Trace Roast Ltd." in response.data
+    with sqlite3.connect(test_database_path) as connection:
+        lot_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM buyer_pledges AS bp
+            INNER JOIN buyer_accounts AS ba
+                ON bp.buyer_account_id = ba.buyer_account_id
+            WHERE ba.organisation_name = 'Trace Roast Ltd'
+            """
+        ).fetchone()[0]
+        notes = connection.execute(
+            """
+            SELECT bp.notes
+            FROM buyer_pledges AS bp
+            INNER JOIN buyer_accounts AS ba
+                ON bp.buyer_account_id = ba.buyer_account_id
+            WHERE ba.organisation_name = 'Trace Roast Ltd'
+            """
+        ).fetchone()[0]
+
+    assert lot_count == 1
+    assert "required_inputs" in notes
+    assert "blocked_inputs" in notes
+    assert catalog_rows[0][1] in notes
+    assert catalog_rows[1][1] in notes
+
+
+def test_export_lot_creation_page_rejects_overlap_between_required_and_blocked_rules(
+    client, test_database_path
+):
+    """The export lot form should reject catalog entries that are both required and blocked."""
+    with sqlite3.connect(test_database_path) as connection:
+        catalog_id = connection.execute(
+            """
+            SELECT input_catalog_id
+            FROM input_catalog
+            WHERE is_active = 1
+            LIMIT 1
+            """
+        ).fetchone()[0]
+
+    response = client.post(
+        "/export-lots/new",
+        data={
+            "organisation_name": "Overlap Buyer",
+            "contact_name": "Grace Nanyonga",
+            "email": "ops@overlap.example",
+            "phone": "+256 700 000000",
+            "crop_type": "Robusta Coffee",
+            "quantity_kg": "700",
+            "target_price_per_kg": "2.10",
+            "needed_by_date": "2026-07-15",
+            "required_input_ids": str(catalog_id),
+            "blocked_input_ids": str(catalog_id),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"cannot be both required and blocked" in response.data
+    with sqlite3.connect(test_database_path) as connection:
+        lot_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM buyer_accounts
+            WHERE organisation_name = 'Overlap Buyer'
+            """
+        ).fetchone()[0]
+
+    assert lot_count == 0

@@ -161,7 +161,7 @@ Task:
 Implemented the initial database schema for buyer pledges, farmer pledges, and pledge allocations.
 
 What changed:
-Created SQLite tables for buyer accounts, buyer pledges, farmer accounts, farmer pledges, pledge allocations, and farm input logs. Added sample data so the application could be tested with realistic records representing both demand and available farm supply.
+Created SQLite tables for buyer accounts, buyer pledges, farmer accounts, farmer pledges, pledge allocations, and crop input records. Added sample data so the application could be tested with realistic records representing both demand and available farm supply.
 
 Why this was done:
 The platform needs to coordinate buyer demand with supply offered by multiple farmers. A simple single-table design would not support the workflow properly because buyer demand and farmer supply are different entities with different states. A separate `pledge_allocations` table was introduced to represent the matching process between them.
@@ -190,7 +190,7 @@ Entry: 2026-03-24 14:00 (development log clarified and runtime logging separated
 -------------------------------------------------------------------------------
 
 What changed:
-Clarified that `docs/dev_logs.txt` is the single development log document for the project and separated it conceptually from application runtime logging. Implemented a dedicated runtime logging system using Python's standard `logging` library so operational logs are not mixed with development reflections.
+Clarified that `docs/dev_log.txt` is the single development log document for the project and separated it conceptually from application runtime logging. Implemented a dedicated runtime logging system using Python's standard `logging` library so operational logs are not mixed with development reflections.
 
 Why this was done:
 The project needed to distinguish between two different forms of record-keeping. The development log is intended for documenting software engineering decisions, implementation reasoning, testing, and reflection. Runtime logging serves a different purpose: it captures application behaviour during execution for monitoring, debugging, and traceability.
@@ -206,7 +206,7 @@ The runtime logging system was designed to:
 - and record events across the Flask application, database helper layer, and database setup workflow.
 
 Problem encountered:
-Earlier work temporarily created a separate `log/dev_logs.txt` file. That structure conflicted with the clarified requirement that the development log should live in `docs/dev_logs.txt`, while runtime logging should be a separate technical system.
+Earlier work temporarily created a separate `log/dev_log.txt` file. That structure conflicted with the clarified requirement that the development log should live in `docs/dev_log.txt`, while runtime logging should be a separate technical system.
 
 Solution applied:
 Removed the mistaken development log file from the `log` directory and introduced a proper runtime logging configuration instead. This restored a clear distinction between project documentation and executable system logging.

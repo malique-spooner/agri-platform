@@ -6,7 +6,7 @@ from typing import Any
 
 
 def criterion_label(criterion: dict[str, Any]) -> str:
-    """Return a readable description for one buyer input rule."""
+    """Return a readable description for one buyer rule."""
     parts = [str(criterion.get("input_type") or "").strip()]
     if criterion.get("product_name"):
         parts.append(str(criterion["product_name"]).strip())
@@ -16,7 +16,7 @@ def criterion_label(criterion: dict[str, Any]) -> str:
 
 
 def log_matches_criterion(log: dict[str, Any], criterion: dict[str, Any]) -> bool:
-    """Return whether an input log satisfies a buyer criterion item."""
+    """Return whether a crop record satisfies a buyer criterion item."""
     if criterion.get("input_type") and str(log.get("input_type")) != str(criterion.get("input_type")):
         return False
     if criterion.get("product_name") and str(log.get("product_name")) != str(criterion.get("product_name")):

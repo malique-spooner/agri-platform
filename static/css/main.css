@@ -1078,7 +1078,7 @@ tbody tr:last-child td {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 18px;
 }
@@ -1106,6 +1106,20 @@ tbody tr:last-child td {
     font-size: 1.5rem;
     font-weight: 760;
     letter-spacing: -0.05em;
+}
+
+.stat-card--action {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.stat-copy {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 .map-card {
@@ -1165,6 +1179,16 @@ tbody tr:last-child td {
     align-items: start;
 }
 
+.settings-card-stack {
+    display: grid;
+    gap: 22px;
+}
+
+.settings-card-stack > section + section {
+    padding-top: 18px;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
 .settings-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1193,6 +1217,51 @@ tbody tr:last-child td {
     grid-column: 1 / -1;
 }
 
+.criteria-picker {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.criteria-picker legend {
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.criteria-picker__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.criteria-picker__item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.84);
+    color: var(--text);
+}
+
+.criteria-picker__item input {
+    margin-top: 3px;
+}
+
+.criteria-picker__item strong,
+.criteria-picker__item small {
+    display: block;
+}
+
+.criteria-picker__item small {
+    color: var(--text-muted);
+}
+
 .banner-message {
     margin-bottom: 16px;
     padding: 14px 18px;
@@ -1200,6 +1269,12 @@ tbody tr:last-child td {
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.76);
     box-shadow: var(--shadow-soft);
+}
+
+.banner-message--success {
+    background: var(--success-bg);
+    color: var(--brand-deep);
+    border-color: rgba(47, 110, 91, 0.2);
 }
 
 .filter-form--settings {

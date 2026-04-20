@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Farm Profile | Agri Platform{% endblock %}
+{% block title %}Farm Profile | TRN Farmer Trace{% endblock %}
 {% block extra_head %}
 <link
     rel="stylesheet"
@@ -12,7 +12,7 @@
 
 {% block content %}
 <section class="page-header">
-    <p class="eyebrow"><a href="{{ url_for('farms') }}">Farm Directory</a></p>
+    <p class="eyebrow"><a href="{{ url_for('farms') }}">Registered Farms</a></p>
     <h1>{{ farm.farm_name }}</h1>
     <p class="lede">
         Managed by {{ farm.farmer_name }}
@@ -37,7 +37,7 @@
     </article>
     <article class="spotlight-card spotlight-card--wide">
         <p class="spotlight-label">Profile view</p>
-        <p class="spotlight-copy">Use the map for orientation, then review each crop offer separately to inspect the full recorded input history.</p>
+        <p class="spotlight-copy">GPS coordinates are captured at registration and used for EUDR deforestation compliance verification by exporters. Plot size is recorded in hectares.</p>
     </article>
 </section>
 

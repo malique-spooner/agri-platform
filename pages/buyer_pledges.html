@@ -1,31 +1,40 @@
 {% extends "base.html" %}
 
-{% block title %}Buyer Pledges | Agri Platform{% endblock %}
+{% block title %}Export Lots | TRN Farmer Trace{% endblock %}
 
 {% block content %}
 <section class="page-header">
-    <h1>Buyer Pledges</h1>
+    <h1>Export Lots</h1>
     <p class="lede">
-        Prioritise demand, inspect one pledge at a time, and move into the next coordination step only when needed.
+        Review buyer demand from EU-facing exporters, match registered farm supply, and assemble verified coffee lots ready for traceability export.
     </p>
 </section>
 
-<section class="spotlight-ribbon">
-    <article class="spotlight-card">
-        <p class="spotlight-label">Not started</p>
-        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'open')|list|length }}</p>
+{% if page_message %}
+<div class="banner-message">{{ page_message }}</div>
+{% endif %}
+
+<section class="stats-grid">
+    <article class="stat-card">
+        <p class="stat-label">Total lots</p>
+        <p class="stat-value">{{ dashboard_summary.total_lots }}</p>
     </article>
-    <article class="spotlight-card">
-        <p class="spotlight-label">In progress</p>
-        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'partial')|list|length }}</p>
+    <article class="stat-card">
+        <p class="stat-label">Ready to export</p>
+        <p class="stat-value">{{ dashboard_summary.ready_lots }}</p>
     </article>
-    <article class="spotlight-card">
-        <p class="spotlight-label">Completed</p>
-        <p class="spotlight-value">{{ pledges|selectattr('pledge_status', 'equalto', 'fulfilled')|list|length }}</p>
+    <article class="stat-card">
+        <p class="stat-label">Active demand</p>
+        <p class="stat-value">{{ dashboard_summary.active_lots }}</p>
     </article>
-    <article class="spotlight-card spotlight-card--wide">
-        <p class="spotlight-label">Queue view</p>
-        <p class="spotlight-copy">Pick one pledge, review the buyer criteria, then move straight into the allocation builder when it is ready for action.</p>
+    <article class="stat-card">
+        <p class="stat-label">Remaining demand</p>
+        <p class="stat-value">{{ dashboard_summary.remaining_quantity_kg|int }} kg</p>
+    </article>
+    <article class="stat-card stat-card--action">
+        <p class="stat-label">Create lot</p>
+        <p class="stat-copy">Add a new export lot with required and blocked inputs from Settings.</p>
+        <a class="primary-link-button" href="{{ url_for('create_export_lot') }}">Add export lot</a>
     </article>
 </section>
 
@@ -193,6 +202,12 @@
             </div>
         </dl>
         <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
+        <form method="post" action="{{ url_for('buyer_pledges') }}" style="margin-top: 12px;">
+            <input type="hidden" name="action" value="auto_fill_and_submit">
+            <input type="hidden" name="selected_pledge_id" value="{{ selected_pledge.buyer_pledge_id }}">
+            <button type="submit" class="secondary-button" {% if not auto_allocate_ready %}disabled{% endif %}>Auto-allocate &amp; submit</button>
+        </form>
+        <p class="rule-copy rule-copy--muted" style="margin-top: 8px;">{{ auto_allocate_reason }}</p>
         {% else %}
         <p class="empty-state">Select a buyer pledge from the table to review its details and next steps.</p>
         {% endif %}

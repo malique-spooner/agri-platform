@@ -11,7 +11,7 @@ def test_build_allocation_page_returns_success(client):
     response = client.get("/buyer-pledges/1/allocation")
 
     assert response.status_code == 200
-    assert b"Build Allocation" in response.data
+    assert b"Assemble Lot" in response.data
     assert b"Staged For Submission" in response.data
     assert b"Submitted:" in response.data
     assert b"Staged:" in response.data
@@ -23,6 +23,190 @@ def test_build_allocation_page_returns_success(client):
     assert b"Required" in response.data
     assert b"Blocked" in response.data
     assert b'Hide ineligible crop offers' in response.data
+    assert b"Auto-fill batch" in response.data
+
+
+def test_build_allocation_page_auto_fill_stages_remaining_supply(client, monkeypatch):
+    """Auto-fill should stage multiple eligible offers until the buyer demand is met."""
+    monkeypatch.setattr(
+        app_module,
+        "get_buyer_pledge_by_id",
+        lambda _: {
+            "buyer_pledge_id": 1,
+            "organisation_name": "Buyer One",
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 1200,
+            "allocated_quantity_kg": 0,
+            "remaining_quantity_kg": 1200,
+            "needed_by_date": "2026-08-01",
+            "pledge_status": "open",
+            "display_status": "Not started",
+            "criteria_summary": "Priority: standard",
+            "criteria": {"required_inputs": [], "blocked_inputs": []},
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledges_for_crop",
+        lambda _: [
+            {
+                "farmer_pledge_id": 11,
+                "farmer_account_id": 3,
+                "farm_name": "Riverbend Farm",
+                "farmer_name": "David Otieno",
+                "county": "Nakuru",
+                "region": "Kenya",
+                "available_quantity_kg": 500,
+                "available_from_date": "2026-06-01",
+                "asking_price_per_kg": 1.7,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+            {
+                "farmer_pledge_id": 12,
+                "farmer_account_id": 4,
+                "farm_name": "Sunrise Plot",
+                "farmer_name": "Amina Njoroge",
+                "county": "Kiambu",
+                "region": "Kenya",
+                "available_quantity_kg": 400,
+                "available_from_date": "2026-06-03",
+                "asking_price_per_kg": 1.9,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+            {
+                "farmer_pledge_id": 13,
+                "farmer_account_id": 5,
+                "farm_name": "Elgon Garden",
+                "farmer_name": "Grace Namukolo",
+                "county": "Mbale",
+                "region": "Uganda",
+                "available_quantity_kg": 300,
+                "available_from_date": "2026-06-07",
+                "asking_price_per_kg": 2.1,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+        ],
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: [], 12: [], 13: []})
+
+    response = client.post("/buyer-pledges/1/allocation", data={"action": "auto_fill"})
+
+    assert response.status_code == 200
+    assert b"Auto-fill staged the remaining eligible supply." in response.data
+    assert b"Staged: 1200.0 kg" in response.data
+
+
+def test_build_allocation_page_auto_fill_and_submit_persists_allocation(client, monkeypatch):
+    """The combined auto-fill and submit action should persist a complete draft in one request."""
+    monkeypatch.setattr(
+        app_module,
+        "get_buyer_pledge_by_id",
+        lambda _: {
+            "buyer_pledge_id": 1,
+            "organisation_name": "Buyer One",
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 1200,
+            "allocated_quantity_kg": 0,
+            "remaining_quantity_kg": 1200,
+            "needed_by_date": "2026-08-01",
+            "pledge_status": "open",
+            "display_status": "Not started",
+            "criteria_summary": "Priority: standard",
+            "criteria": {"required_inputs": [], "blocked_inputs": []},
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledges_for_crop",
+        lambda _: [
+            {
+                "farmer_pledge_id": 11,
+                "farmer_account_id": 3,
+                "farm_name": "Riverbend Farm",
+                "farmer_name": "David Otieno",
+                "county": "Nakuru",
+                "region": "Kenya",
+                "available_quantity_kg": 500,
+                "available_from_date": "2026-06-01",
+                "asking_price_per_kg": 1.7,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+            {
+                "farmer_pledge_id": 12,
+                "farmer_account_id": 4,
+                "farm_name": "Sunrise Plot",
+                "farmer_name": "Amina Njoroge",
+                "county": "Kiambu",
+                "region": "Kenya",
+                "available_quantity_kg": 400,
+                "available_from_date": "2026-06-03",
+                "asking_price_per_kg": 1.9,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+            {
+                "farmer_pledge_id": 13,
+                "farmer_account_id": 5,
+                "farm_name": "Elgon Garden",
+                "farmer_name": "Grace Namukolo",
+                "county": "Mbale",
+                "region": "Uganda",
+                "available_quantity_kg": 300,
+                "available_from_date": "2026-06-07",
+                "asking_price_per_kg": 2.1,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            },
+        ],
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: [], 12: [], 13: []})
+    persisted = []
+
+    def fake_persist_confirmed_allocation(buyer_pledge_id, selected_rows):
+        persisted.append((buyer_pledge_id, selected_rows))
+
+    monkeypatch.setattr(app_module, "persist_confirmed_allocation", fake_persist_confirmed_allocation)
+
+    response = client.post("/buyer-pledges/1/allocation", data={"action": "auto_fill_and_submit"}, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"Auto-allocate and submit completed." in response.data
+    assert persisted
+    assert persisted[0][0] == 1
 
 
 def test_build_allocation_page_filters_farms_to_matching_crop(client, monkeypatch):
@@ -33,7 +217,7 @@ def test_build_allocation_page_filters_farms_to_matching_crop(client, monkeypatc
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 200,
             "remaining_quantity_kg": 1000,
@@ -75,7 +259,7 @@ def test_build_allocation_page_filters_farms_to_matching_crop(client, monkeypatc
 
     assert response.status_code == 200
     assert b"Riverbend Farm" in response.data
-    assert b"Beans" in response.data
+    assert b"Arabica Coffee" in response.data
     assert b"Required" in response.data
     assert b"Blocked" in response.data
     assert b"Hide ineligible crop offers" in response.data
@@ -90,7 +274,7 @@ def test_build_allocation_page_adds_suggested_quantity_to_draft(client, monkeypa
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 200,
             "remaining_quantity_kg": 1000,
@@ -170,7 +354,7 @@ def test_build_allocation_page_renders_validation_error_for_excess_total(client,
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 400,
             "remaining_quantity_kg": 300,
@@ -232,7 +416,7 @@ def test_build_allocation_page_shows_blocked_crop_offer_as_not_selectable(client
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 0,
             "remaining_quantity_kg": 1200,
@@ -325,7 +509,7 @@ def test_build_allocation_export_is_blocked_until_batch_is_complete(client, monk
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 200,
             "remaining_quantity_kg": 1000,
@@ -354,7 +538,7 @@ def test_build_allocation_page_can_hide_ineligible_offers(client, monkeypatch):
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 0,
             "remaining_quantity_kg": 1200,
@@ -405,7 +589,7 @@ def test_build_allocation_page_can_hide_ineligible_offers(client, monkeypatch):
     buyer_with_block = {
         "buyer_pledge_id": 1,
         "organisation_name": "Buyer One",
-        "crop_type": "Beans",
+        "crop_type": "Arabica Coffee",
         "quantity_kg": 1200,
         "allocated_quantity_kg": 0,
         "remaining_quantity_kg": 1200,
@@ -429,7 +613,7 @@ def test_build_allocation_page_hides_blocked_offers_when_checkbox_submits_two_va
     buyer_with_block = {
         "buyer_pledge_id": 1,
         "organisation_name": "Buyer One",
-        "crop_type": "Beans",
+        "crop_type": "Arabica Coffee",
         "quantity_kg": 1200,
         "allocated_quantity_kg": 0,
         "remaining_quantity_kg": 1200,
@@ -489,7 +673,7 @@ def test_build_allocation_page_hide_toggle_keeps_review_offers_visible(client, m
     buyer_with_rules = {
         "buyer_pledge_id": 1,
         "organisation_name": "Buyer One",
-        "crop_type": "Beans",
+        "crop_type": "Arabica Coffee",
         "quantity_kg": 1200,
         "allocated_quantity_kg": 0,
         "remaining_quantity_kg": 1200,
@@ -555,7 +739,7 @@ def test_build_allocation_page_submit_writes_allocations_and_refreshes_state(cli
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 200,
             "remaining_quantity_kg": 1000,
@@ -600,7 +784,7 @@ def test_build_allocation_page_submit_writes_allocations_and_refreshes_state(cli
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 600,
             "remaining_quantity_kg": 600,
@@ -631,7 +815,7 @@ def test_build_allocation_page_export_button_returns_pdf_with_mocked_pledge(clie
         lambda _: {
             "buyer_pledge_id": 1,
             "organisation_name": "Buyer One",
-            "crop_type": "Beans",
+            "crop_type": "Arabica Coffee",
             "quantity_kg": 1200,
             "allocated_quantity_kg": 1200,
             "remaining_quantity_kg": 0,

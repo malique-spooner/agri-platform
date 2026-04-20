@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Create Export Lot | TRN Farmer Trace{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <p class="eyebrow"><a href="{{ url_for('buyer_pledges') }}">Export Lots</a></p>
+    <h1>Create Export Lot</h1>
+    <p class="lede">
+        Add a new export demand record so the allocation builder has more lots to stage and close.
+    </p>
+</section>
+
+{% if message %}
+<div class="banner-message {% if success %}banner-message--success{% endif %}">
+    {{ message }}
+</div>
+{% endif %}
+
+<section class="settings-grid">
+    <article class="info-card">
+        <p class="eyebrow">Buyer request</p>
+        <h2>Export lot details</h2>
+        <p class="table-subtle">
+            Enter the exporter, the coffee type, and the quantity needed. Required and blocked rules must be
+            chosen from the active input catalog managed in Settings.
+        </p>
+        {% if created_pledge_id %}
+        <div class="mini-chip-row">
+            <span class="mini-chip">Created lot #{{ created_pledge_id }}</span>
+            <a class="text-link" href="{{ url_for('buyer_pledges', selected=created_pledge_id) }}">Review in queue</a>
+        </div>
+        {% endif %}
+    </article>
+
+    <article class="info-card info-card--wide">
+        <form method="post" class="settings-form" action="{{ url_for('create_export_lot') }}">
+            <label>
+                <span>Organisation name</span>
+                <input type="text" name="organisation_name" placeholder="e.g. Kyagalanyi Coffee Ltd" required>
+            </label>
+
+            <label>
+                <span>Contact name</span>
+                <input type="text" name="contact_name" placeholder="e.g. Grace Nanyonga" required>
+            </label>
+
+            <label>
+                <span>Email</span>
+                <input type="email" name="email" placeholder="e.g. ops@buyer.example">
+            </label>
+
+            <label>
+                <span>Phone</span>
+                <input type="text" name="phone" placeholder="e.g. +256 700 123456">
+            </label>
+
+            <label>
+                <span>Crop type</span>
+                <select name="crop_type" required>
+                    <option value="">Select crop</option>
+                    {% for crop in crop_options %}
+                    <option value="{{ crop }}">{{ crop }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                <span>Quantity needed (kg)</span>
+                <input type="number" name="quantity_kg" placeholder="e.g. 1200" step="1" min="1" required>
+            </label>
+
+            <label>
+                <span>Target price per kg</span>
+                <input type="number" name="target_price_per_kg" placeholder="e.g. 2.35" step="0.01" min="0">
+            </label>
+
+            <label>
+                <span>Needed by date</span>
+                <input type="date" name="needed_by_date">
+            </label>
+
+            <fieldset class="settings-form__full criteria-picker">
+                <legend>Required inputs</legend>
+                <div class="criteria-picker__list">
+                    {% for entry in catalog_entries %}
+                    <label class="criteria-picker__item">
+                        <input type="checkbox" name="required_input_ids" value="{{ entry.input_catalog_id }}">
+                        <span>
+                            <strong>{{ entry.display_name }}</strong>
+                            <small>{{ entry.compliance_tag|title }} · {{ entry.application_method }}</small>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <fieldset class="settings-form__full criteria-picker">
+                <legend>Blocked inputs</legend>
+                <div class="criteria-picker__list">
+                    {% for entry in catalog_entries %}
+                    <label class="criteria-picker__item">
+                        <input type="checkbox" name="blocked_input_ids" value="{{ entry.input_catalog_id }}">
+                        <span>
+                            <strong>{{ entry.display_name }}</strong>
+                            <small>{{ entry.compliance_tag|title }} · {{ entry.application_method }}</small>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="settings-form__full">
+                <button type="submit" class="primary-button">Create export lot</button>
+            </div>
+        </form>
+    </article>
+</section>
+{% endblock %}

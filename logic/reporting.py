@@ -17,7 +17,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from logic.allocation_logic import criterion_label, log_matches_criterion
-from logic.database_helpers import get_buyer_pledge_by_id, get_connection, get_input_logs_for_pledge_ids
+from logic.database_helpers import get_buyer_pledge_by_id, get_connection, get_crop_records_for_pledge_ids
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -27,8 +27,8 @@ BRAND_MANIFEST_PATH = PROJECT_ROOT / "static" / "brand" / "atlas_harvest.json"
 def load_brand_manifest() -> dict[str, Any]:
     """Return the current brand manifest or sensible fallbacks."""
     fallback = {
-        "name": "Malique's Farm",
-        "descriptor": "Coordination Console",
+        "name": "TRN Farmer Trace",
+        "descriptor": "Collective Trade System",
         "colors": {
             "ink": "#0F1724",
             "slate": "#5F6C7B",
@@ -284,7 +284,7 @@ def fetch_batch_report_context(buyer_pledge_id: int) -> dict[str, Any]:
     }
     allocation_rows = [row for row in rows if row.get("allocation_id") is not None]
     pledge_ids = sorted({int(row["farmer_pledge_id"]) for row in allocation_rows})
-    logs_by_pledge = get_input_logs_for_pledge_ids(pledge_ids)
+    logs_by_pledge = get_crop_records_for_pledge_ids(pledge_ids)
 
     grouped_allocations: dict[tuple[int, int], dict[str, Any]] = {}
     for row in allocation_rows:
@@ -454,7 +454,7 @@ def build_buyer_report_story(context: dict[str, Any], styles: StyleSheet1, palet
     farms = context["farms"]
     allocations = context["allocations"]
     story: list[Any] = [
-        Paragraph("Buyer batch report", styles["ReportKicker"]),
+        Paragraph("Lot trace report", styles["ReportKicker"]),
         Paragraph(f"Batch linked to pledge #{buyer_pledge['buyer_pledge_id']}", styles["Title"]),
         Paragraph(
             f"{buyer_pledge['organisation_name']} · {buyer_pledge['crop_type']} · generated {context['generated_at'].strftime('%d %b %Y, %H:%M')}",
@@ -509,7 +509,7 @@ def build_buyer_report_story(context: dict[str, Any], styles: StyleSheet1, palet
     else:
         story.append(Paragraph("No confirmed farm contributions have been recorded for this pledge yet.", styles["Body"]))
 
-    story.extend([Spacer(1, 6 * mm), Paragraph("Batch input logs", styles["SectionHeading"])])
+    story.extend([Spacer(1, 6 * mm), Paragraph("Batch crop records", styles["SectionHeading"])])
     if allocations:
         log_rows: list[list[str]] = []
         for row in allocations:
@@ -532,7 +532,7 @@ def build_buyer_report_story(context: dict[str, Any], styles: StyleSheet1, palet
                         row["farm_name"],
                         f"#{row['farmer_pledge_id']} · {row['farmer_crop_type']}",
                         "Not recorded",
-                        "No crop input logs",
+                        "No crop records",
                         "n/a",
                         "n/a",
                         "No note",
@@ -548,7 +548,7 @@ def build_buyer_report_story(context: dict[str, Any], styles: StyleSheet1, palet
             )
         )
     else:
-        story.append(Paragraph("Input logs will appear once farm contributions have been confirmed.", styles["Body"]))
+        story.append(Paragraph("Crop records will appear once farm contributions have been confirmed.", styles["Body"]))
     return story
 
 
@@ -559,7 +559,7 @@ def build_farmer_report_story(context: dict[str, Any], styles: StyleSheet1, pale
     story: list[Any] = []
     if not farms:
         return [
-            Paragraph("Farmer participation report", styles["ReportKicker"]),
+            Paragraph("Farmer trace record", styles["ReportKicker"]),
             Paragraph(f"Pledge #{buyer_pledge['buyer_pledge_id']}", styles["Title"]),
             Paragraph("No participating farms have been confirmed for this buyer pledge yet.", styles["Body"]),
         ]
@@ -569,7 +569,7 @@ def build_farmer_report_story(context: dict[str, Any], styles: StyleSheet1, pale
             story.append(PageBreak())
         story.extend(
             [
-                Paragraph("Farmer participation report", styles["ReportKicker"]),
+                Paragraph("Farmer trace record", styles["ReportKicker"]),
                 Paragraph(farm["farm_name"], styles["Title"]),
                 Paragraph(
                     f"{farm['farmer_name']} · {farm.get('county') or 'County n/a'}, {farm.get('region') or 'Region n/a'} · linked to buyer pledge #{buyer_pledge['buyer_pledge_id']}",
@@ -621,7 +621,7 @@ def build_farmer_report_story(context: dict[str, Any], styles: StyleSheet1, pale
             if row["logs"]:
                 story.append(
                     simple_table(
-                        ["Log date", "Input", "Qty", "Notes"],
+                ["Record date", "Input", "Qty", "Notes"],
                         [
                             [
                                 format_date(log.get("log_date")),
@@ -637,7 +637,7 @@ def build_farmer_report_story(context: dict[str, Any], styles: StyleSheet1, pale
                     )
                 )
             else:
-                story.append(Paragraph("No crop input logs were recorded for this offer.", styles["Body"]))
+                story.append(Paragraph("No crop records were recorded for this offer.", styles["Body"]))
 
             story.append(
                 Paragraph(
@@ -680,7 +680,7 @@ def build_buyer_summary_pdf(buyer_pledge_id: int) -> bytes:
     styles, palette = build_styles(brand)
     context = fetch_batch_report_context(buyer_pledge_id)
     story = build_buyer_report_story(context, styles, palette)
-    return render_pdf(story, title=f"{brand['name']} Buyer Batch Report")
+    return render_pdf(story, title=f"{brand['name']} Lot Trace Report")
 
 
 def build_farmer_summary_pdf(buyer_pledge_id: int) -> bytes:
@@ -689,4 +689,4 @@ def build_farmer_summary_pdf(buyer_pledge_id: int) -> bytes:
     styles, palette = build_styles(brand)
     context = fetch_batch_report_context(buyer_pledge_id)
     story = build_farmer_report_story(context, styles, palette)
-    return render_pdf(story, title=f"{brand['name']} Farmer Participation Report")
+    return render_pdf(story, title=f"{brand['name']} Farmer Trace Record")

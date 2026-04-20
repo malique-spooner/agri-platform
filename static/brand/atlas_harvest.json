@@ -1,12 +1,12 @@
 {
-  "name": "Malique's Farm",
-  "descriptor": "Coordination Console",
-  "mission": "Bring fragmented agricultural supply into one readable operating view.",
+  "name": "TRN Farmer Trace",
+  "descriptor": "Collective Trade System",
+  "mission": "Register micro-farms, build verified lots, and deliver traceable coffee to export buyers.",
   "product_shell": {
-    "kicker": "Aggregator Workspace",
-    "nav_primary": "Demand Queue",
-    "nav_secondary": "Farm Network",
-    "footer_note": "Malique's Farm manages buyer demand, farm visibility, and allocation assembly in one operating surface."
+    "kicker": "NGO Aggregator Workspace",
+    "nav_primary": "Export Lots",
+    "nav_secondary": "Registered Farms",
+    "footer_note": "TRN Farmer Trace coordinates smallholder coffee registration, lot assembly, and buyer-facing traceability records across Uganda and Kenya."
   },
   "status_labels": {
     "open": "Not started",

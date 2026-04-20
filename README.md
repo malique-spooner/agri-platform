@@ -1,11 +1,12 @@
-# Agri Platform
+# TRN Farmer Trace & Collective Trade System
 
-Version 0 prototype for coordinating agricultural supply pledges between buyers and farmers.
+Version 0 prototype for the TRN NGO agricultural aggregation model. Supports smallholder farmer registration, coffee lot assembly, and traceability report generation for EU-facing exporters in Uganda and Kenya.
 
 ## Current Scope
 
-The current prototype supports the aggregator workflow for:
+The current prototype supports the workflow for:
 
+- registering coffee farmers from `/farmers/register`
 - reviewing buyer pledges from the homepage
 - browsing the farm directory
 - drilling into farm profiles and crop-offer detail pages
@@ -26,30 +27,31 @@ The current prototype supports the aggregator workflow for:
 
 The easiest way to share this project is to send the GitHub repository link:
 
-- [github.com/malique-spooner/agri-platform](https://github.com/malique-spooner/agri-platform)
+- [github.com/malique-spooner/trn-farmer-trace](https://github.com/malique-spooner/trn-farmer-trace)
 
 Anyone reviewing the project can run it locally with these steps:
 
 ```bash
-git clone https://github.com/malique-spooner/agri-platform.git
-cd agri-platform
+git clone https://github.com/malique-spooner/trn-farmer-trace.git
+cd trn-farmer-trace
 python3 -m venv venv
-./venv/bin/pip install -e ".[dev]"
-./venv/bin/python database/setup_database.py
-./venv/bin/python database/generate_data.py
-./venv/bin/python app.py
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python database/setup_database.py
+python database/generate_data.py
+python app.py
 ```
 
 Then open:
 
 - [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
 
-That route opens the buyer-pledge queue, which is the main homepage for the prototype.
+That route opens the Export Lots queue, which is the main homepage for the prototype.
 
 If a reviewer wants to reset the demo data back to the seeded state, they can either:
 
 - use the `Reset database` action on `/settings`
-- or rerun `./venv/bin/python database/generate_data.py`
+- or rerun `python database/generate_data.py`
 
 If a reviewer only wants to inspect the stored data without running the UI, they can open:
 
@@ -59,10 +61,18 @@ with any SQLite browser such as DB Browser for SQLite.
 
 ## Installation
 
-Create and activate a virtual environment, then install the project with dev tools:
+Create and activate a virtual environment, then install dependencies:
 
 ```bash
-./venv/bin/pip install -e ".[dev]"
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Alternatively, install the project with dev tools using the pyproject.toml:
+
+```bash
+pip install -e ".[dev]"
 ```
 
 ## Database Setup
@@ -70,35 +80,45 @@ Create and activate a virtual environment, then install the project with dev too
 Create or update the SQLite schema:
 
 ```bash
-./venv/bin/python database/setup_database.py
+python database/setup_database.py
 ```
 
 Generate the seeded demo dataset:
 
 ```bash
-./venv/bin/python database/generate_data.py
+python database/generate_data.py
 ```
 
 The default generator produces:
 
 - 20 buyer pledges
-- farms only in Uganda, Kenya, and Zambia
+- farms only in Uganda and Kenya
 - realistic recent dates relative to the current date
-- standardized crop input logs linked to the input catalog
+- standardized crop input records linked to the input catalog
 
 ## Running the App
 
 Run the Flask application:
 
 ```bash
-./venv/bin/python app.py
+python app.py
 ```
+
+Or with the Flask CLI (after activating the venv):
+
+```bash
+flask run
+```
+
+For deployment, use a WSGI server such as `gunicorn` with the included `Procfile`.
 
 The main working pages are:
 
+- `/farmers/register` farmer registration
+- `/export-lots/new` create export lot form
 - `/buyer-pledges` buyer-demand queue and homepage
 - `/buyer-pledges/<pledge_id>/allocation` batch builder
-- `/farms` farm directory
+- `/farms` registered farms directory
 - `/farms/<farm_id>` farm profile
 - `/farms/<farm_id>/pledges/<pledge_id>` crop-offer detail
 - `/settings` input catalog management and demo reset
@@ -108,25 +128,13 @@ The main working pages are:
 Run the tests:
 
 ```bash
-./venv/bin/python -m pytest -q
+pytest -q
 ```
 
 Run coverage-aware tests:
 
 ```bash
-./venv/bin/python -m pytest --cov
-```
-
-Run lint checks:
-
-```bash
-./venv/bin/python -m ruff check .
-```
-
-Format imports and style issues automatically where safe:
-
-```bash
-./venv/bin/python -m ruff check . --fix
+pytest --cov
 ```
 
 ## Project Structure
@@ -150,7 +158,7 @@ The prototype currently uses seven tables:
 - `farmer_pledges`
 - `pledge_allocations`
 - `input_catalog`
-- `farm_input_logs`
+- `farm_input_logs` and related crop input record helpers
 
 Buyer demand is created by buyer accounts, farmer supply is created by farmer accounts, and the allocation table links a buyer pledge to one or more farm offers. Input logs and the input catalog support traceability and buyer-rule matching.
 

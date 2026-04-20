@@ -19,9 +19,161 @@ ALLOWED_INPUT_TAGS = {"standard", "organic", "restricted"}
 
 def get_database_path() -> Path:
     """Return the configured database path, defaulting to the local demo database."""
-    database_path = Path(os.environ.get("AGRI_PLATFORM_DB_PATH", DEFAULT_DATABASE_PATH))
+    database_path = Path(
+        os.environ.get("TRN_FARMER_TRACE_DB_PATH")
+        or os.environ.get("AGRI_PLATFORM_DB_PATH")
+        or DEFAULT_DATABASE_PATH
+    )
     logger.debug("Resolved database path: %s", database_path)
     return database_path
+
+
+def register_farmer_account(
+    *,
+    farm_name: str,
+    farmer_name: str,
+    national_id: str,
+    phone: str,
+    region: str,
+    county: str,
+    crop_type: str,
+    plot_size_ha: float | None,
+    latitude: float | None,
+    longitude: float | None,
+) -> int:
+    """Insert a new farmer account and return its id."""
+    logger.info(
+        "Registering new farmer account farm_name=%s farmer_name=%s region=%s",
+        farm_name,
+        farmer_name,
+        region,
+    )
+    created_at = datetime.now().replace(microsecond=0).isoformat(sep=" ")
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO farmer_accounts (
+                farm_name,
+                farmer_name,
+                county,
+                region,
+                latitude,
+                longitude,
+                email,
+                phone,
+                total_hectares,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                farm_name,
+                farmer_name,
+                county,
+                region,
+                latitude,
+                longitude,
+                f"NID:{national_id}",
+                phone,
+                plot_size_ha,
+                created_at,
+            ),
+        )
+        connection.commit()
+        logger.info(
+            "Farmer account created id=%s for %s at %s",
+            cursor.lastrowid,
+            farmer_name,
+            farm_name,
+        )
+        return int(cursor.lastrowid)
+
+
+def create_buyer_export_lot(
+    *,
+    organisation_name: str,
+    contact_name: str,
+    email: str | None,
+    phone: str | None,
+    crop_type: str,
+    quantity_kg: float,
+    target_price_per_kg: float | None,
+    needed_by_date: str | None,
+    notes: str | None = None,
+) -> int:
+    """Insert a buyer account and its export lot, returning the new pledge id."""
+    logger.info(
+        "Creating export lot organisation=%s contact=%s crop=%s quantity=%.2f",
+        organisation_name,
+        contact_name,
+        crop_type,
+        quantity_kg,
+    )
+    created_at = datetime.now().replace(microsecond=0).isoformat(sep=" ")
+    normalized_email = email.strip() if email and email.strip() else f"{organisation_name.lower().replace(' ', '.')}.exports@example"
+    normalized_notes = (
+        notes.strip()
+        if notes and notes.strip()
+        else json.dumps(
+            {
+                "priority": "standard",
+                "organic_preference": False,
+                "delivery_window_days": 14,
+                "required_inputs": [],
+                "blocked_inputs": [],
+            },
+            sort_keys=True,
+        )
+    )
+
+    with get_connection() as connection:
+        buyer_cursor = connection.execute(
+            """
+            INSERT INTO buyer_accounts (
+                organisation_name,
+                contact_name,
+                email,
+                phone,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                organisation_name,
+                contact_name,
+                normalized_email,
+                phone.strip() if phone and phone.strip() else None,
+                created_at,
+            ),
+        )
+        cursor = connection.execute(
+            """
+            INSERT INTO buyer_pledges (
+                buyer_account_id,
+                crop_type,
+                quantity_kg,
+                target_price_per_kg,
+                needed_by_date,
+                pledge_status,
+                notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, 'open', ?, ?)
+            """,
+            (
+                buyer_cursor.lastrowid,
+                crop_type,
+                quantity_kg,
+                target_price_per_kg,
+                needed_by_date,
+                normalized_notes,
+                created_at,
+            ),
+        )
+        connection.commit()
+        logger.info(
+            "Export lot created buyer_account_id=%s buyer_pledge_id=%s",
+            buyer_cursor.lastrowid,
+            cursor.lastrowid,
+        )
+        return int(cursor.lastrowid)
 
 
 def get_connection() -> sqlite3.Connection:
@@ -163,6 +315,35 @@ def create_input_catalog_entry(
         return int(cursor.lastrowid)
 
 
+def get_input_catalog_entry_by_id(input_catalog_id: int) -> dict[str, Any] | None:
+    """Return one input catalog entry by id."""
+    logger.info("Fetching input catalog entry id=%s", input_catalog_id)
+    query = """
+        SELECT
+            input_catalog_id,
+            input_category,
+            product_name,
+            brand_name,
+            application_method,
+            default_unit,
+            compliance_tag,
+            is_active,
+            notes,
+            created_at
+        FROM input_catalog
+        WHERE input_catalog_id = ?
+    """
+
+    with get_connection() as connection:
+        row = connection.execute(query, (input_catalog_id,)).fetchone()
+
+    if row is None:
+        logger.warning("No input catalog entry found for id=%s", input_catalog_id)
+        return None
+
+    return dict(row)
+
+
 def remove_input_catalog_entry(input_catalog_id: int) -> str:
     """Delete an unused catalog entry or deactivate one that is already referenced."""
     logger.info("Removing input catalog entry id=%s", input_catalog_id)
@@ -186,6 +367,88 @@ def remove_input_catalog_entry(input_catalog_id: int) -> str:
         connection.commit()
         logger.info("Deleted unused input catalog entry id=%s", input_catalog_id)
         return "deleted"
+
+
+def create_farm_input_log(
+    *,
+    farmer_account_id: int,
+    farmer_pledge_id: int | None,
+    input_catalog_id: int,
+    quantity: float,
+    log_date: str,
+    notes: str | None = None,
+) -> int:
+    """Insert a new crop input record from a catalog entry and return its id."""
+    logger.info(
+        "Creating crop input record farmer_account_id=%s farmer_pledge_id=%s input_catalog_id=%s quantity=%.2f",
+        farmer_account_id,
+        farmer_pledge_id,
+        input_catalog_id,
+        quantity,
+    )
+    catalog_entry = get_input_catalog_entry_by_id(input_catalog_id)
+    if catalog_entry is None:
+        raise ValueError(f"Input catalog entry {input_catalog_id} was not found.")
+    if not catalog_entry.get("is_active"):
+        raise ValueError(f"Input catalog entry {input_catalog_id} is inactive.")
+
+    created_at = datetime.now().replace(microsecond=0).isoformat(sep=" ")
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO farm_input_logs (
+                farmer_account_id,
+                farmer_pledge_id,
+                input_catalog_id,
+                input_type,
+                product_name,
+                brand_name,
+                application_method,
+                quantity,
+                unit,
+                log_date,
+                notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                farmer_account_id,
+                farmer_pledge_id,
+                input_catalog_id,
+                catalog_entry["input_category"],
+                catalog_entry["product_name"],
+                catalog_entry["brand_name"],
+                catalog_entry["application_method"],
+                quantity,
+                catalog_entry["default_unit"],
+                log_date,
+                notes.strip() if notes and notes.strip() else None,
+                created_at,
+            ),
+        )
+        connection.commit()
+        logger.info("Created crop input record id=%s", cursor.lastrowid)
+        return int(cursor.lastrowid)
+
+
+def create_farm_crop_record(
+    *,
+    farmer_account_id: int,
+    farmer_pledge_id: int | None,
+    input_catalog_id: int,
+    quantity: float,
+    log_date: str,
+    notes: str | None = None,
+) -> int:
+    """Backward-compatible wrapper with clearer terminology."""
+    return create_farm_input_log(
+        farmer_account_id=farmer_account_id,
+        farmer_pledge_id=farmer_pledge_id,
+        input_catalog_id=input_catalog_id,
+        quantity=quantity,
+        log_date=log_date,
+        notes=notes,
+    )
 
 
 def summarise_buyer_criteria(notes: str | None) -> str:
@@ -625,8 +888,8 @@ def get_farmer_pledge_by_id(farm_id: int, pledge_id: int) -> dict[str, Any] | No
 
 
 def get_input_logs_for_pledge(farm_id: int, pledge_id: int) -> list[dict[str, Any]]:
-    """Return input logs for a specific farmer pledge."""
-    logger.info("Fetching input logs for farm id=%s and pledge id=%s", farm_id, pledge_id)
+    """Return crop input records for a specific farmer pledge."""
+    logger.info("Fetching crop input records for farm id=%s and pledge id=%s", farm_id, pledge_id)
     query = """
         SELECT
             fil.input_log_id,
@@ -655,7 +918,7 @@ def get_input_logs_for_pledge(farm_id: int, pledge_id: int) -> list[dict[str, An
         rows = connection.execute(query, (farm_id, pledge_id)).fetchall()
 
     logger.info(
-        "Fetched %s input log record(s) for farm id=%s and pledge id=%s",
+        "Fetched %s crop input record(s) for farm id=%s and pledge id=%s",
         len(rows),
         farm_id,
         pledge_id,
@@ -664,9 +927,9 @@ def get_input_logs_for_pledge(farm_id: int, pledge_id: int) -> list[dict[str, An
 
 
 def get_input_logs_for_pledge_ids(pledge_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
-    """Return input logs for multiple farmer pledges keyed by pledge id."""
+    """Return crop input records for multiple farmer pledges keyed by pledge id."""
     if not pledge_ids:
-        logger.info("Skipping bulk input-log fetch because no pledge ids were provided")
+        logger.info("Skipping bulk crop-record fetch because no pledge ids were provided")
         return {}
 
     placeholders = ", ".join("?" for _ in pledge_ids)
@@ -698,11 +961,21 @@ def get_input_logs_for_pledge_ids(pledge_ids: list[int]) -> dict[int, list[dict[
     for row in rows_to_dicts(rows):
         logs_by_pledge_id.setdefault(int(row["farmer_pledge_id"]), []).append(row)
     logger.info(
-        "Fetched %s input log record(s) across %s pledge id(s)",
+        "Fetched %s crop input record(s) across %s pledge id(s)",
         len(rows),
         len(pledge_ids),
     )
     return logs_by_pledge_id
+
+
+def get_crop_records_for_pledge(farm_id: int, pledge_id: int) -> list[dict[str, Any]]:
+    """Backward-compatible wrapper with clearer terminology."""
+    return get_input_logs_for_pledge(farm_id, pledge_id)
+
+
+def get_crop_records_for_pledge_ids(pledge_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+    """Backward-compatible wrapper with clearer terminology."""
+    return get_input_logs_for_pledge_ids(pledge_ids)
 
 
 def get_farmer_pledges_for_crop(crop_type: str) -> list[dict[str, Any]]:

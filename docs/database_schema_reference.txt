@@ -1,4 +1,4 @@
-Agri Platform Database Schema Reference
+TRN Farmer Trace Database Schema Reference
 Last updated: 25 March 2026
 
 Purpose
@@ -12,9 +12,9 @@ High-Level Relationship Map
 - One farmer account can create many farmer pledges.
 - One buyer pledge can be fulfilled by many farmer pledges through `pledge_allocations`.
 - One farmer pledge can contribute to many buyer pledges through `pledge_allocations`.
-- One farmer account can have many farm input logs.
-- One farmer pledge can have many farm input logs.
-- One standardized catalog item can be reused across many farm input logs.
+- One farmer account can have many farm crop records.
+- One farmer pledge can have many farm crop records.
+- One standardized catalog item can be reused across many farm crop records.
 
 Table: buyer_accounts
 Primary key
@@ -86,8 +86,7 @@ Purpose
 Geographic scope used by the seeded demo data
 - Uganda
 - Kenya
-- Zambia
-
+- 
 Relationships
 - Referenced by `farmer_pledges.farmer_account_id`
 - Referenced by `farm_input_logs.farmer_account_id`
@@ -158,7 +157,7 @@ Important columns
 - `created_at`
 
 Purpose
-- Standardizes the agricultural inputs and production activities that can appear in input logs.
+- Standardizes the agricultural inputs and production activities that can appear in crop records.
 
 Prototype classification values
 - `standard`

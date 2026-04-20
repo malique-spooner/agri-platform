@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Build Allocation | Agri Platform{% endblock %}
+{% block title %}Assemble Lot | TRN Farmer Trace{% endblock %}
 
 {% block content %}
 <section class="page-header">
-    <p class="eyebrow"><a href="{{ url_for('buyer_pledges', selected=buyer_pledge.buyer_pledge_id) }}">Buyer Pledges</a></p>
-    <h1>Build Allocation</h1>
-    <p class="lede">Compare buyer requirements with what has actually been recorded on each crop offer, then build a draft allocation using a standard Flask form.</p>
+    <p class="eyebrow"><a href="{{ url_for('buyer_pledges', selected=buyer_pledge.buyer_pledge_id) }}">Export Lots</a></p>
+    <h1>Assemble Lot</h1>
+    <p class="lede">Match registered farm supply to this export buyer's coffee demand. Stage farm contributions, confirm the lot, and export the traceability report.</p>
 </section>
 
 <section class="spotlight-ribbon">
@@ -24,7 +24,7 @@
     </article>
     <article class="spotlight-card spotlight-card--wide">
         <p class="spotlight-label">Allocation mode</p>
-        <p class="spotlight-copy">This view compares buyer rules against recorded crop actions so the batch can be assembled with fewer surprises later.</p>
+        <p class="spotlight-copy">This view compares buyer rules against recorded coffee actions so the batch can be assembled with fewer surprises later.</p>
     </article>
 </section>
 
@@ -143,6 +143,15 @@
         {% endif %}
 
         <div class="allocation-sidebar__actions">
+            <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
+                <input type="hidden" name="action" value="auto_fill">
+                {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
+                <input type="hidden" name="country" value="{{ country_filter }}">
+                <input type="hidden" name="availability" value="{{ availability_filter }}">
+                <input type="hidden" name="rule" value="{{ rule_filter }}">
+                <input type="hidden" name="sort" value="{{ sort_by }}">
+                <button type="submit" class="secondary-button">Auto-fill batch</button>
+            </form>
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="submit">
                 {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}

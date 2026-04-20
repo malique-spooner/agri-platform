@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import app as app_module
 
 
@@ -10,7 +12,7 @@ def test_farms_page_returns_success(client):
     response = client.get("/farms")
 
     assert response.status_code == 200
-    assert b"Farm Directory" in response.data
+    assert b"Registered Farms" in response.data
     assert b"<table" in response.data
     assert b"View profile" in response.data
 
@@ -30,7 +32,7 @@ def test_farms_page_filters_by_search_term(client, monkeypatch):
                 "pledge_count": 2,
                 "crop_count": 2,
                 "total_supply_kg": 1200,
-                "crop_types": ["Beans", "Tomatoes"],
+                "crop_types": ["Robusta Coffee"],
                 "next_available_date": "2026-06-01",
                 "has_active_offers": True,
                 "available_soon": True,
@@ -44,7 +46,7 @@ def test_farms_page_filters_by_search_term(client, monkeypatch):
                 "pledge_count": 1,
                 "crop_count": 1,
                 "total_supply_kg": 800,
-                "crop_types": ["Maize"],
+                "crop_types": ["Arabica Coffee"],
                 "next_available_date": "2026-07-01",
                 "has_active_offers": True,
                 "available_soon": False,
@@ -74,7 +76,7 @@ def test_farms_page_filters_by_crop(client, monkeypatch):
                 "pledge_count": 2,
                 "crop_count": 2,
                 "total_supply_kg": 1200,
-                "crop_types": ["Beans", "Tomatoes"],
+                "crop_types": ["Robusta Coffee"],
                 "next_available_date": "2026-06-01",
                 "has_active_offers": True,
                 "available_soon": True,
@@ -88,7 +90,7 @@ def test_farms_page_filters_by_crop(client, monkeypatch):
                 "pledge_count": 1,
                 "crop_count": 1,
                 "total_supply_kg": 800,
-                "crop_types": ["Maize"],
+                "crop_types": ["Arabica Coffee"],
                 "next_available_date": "2026-07-01",
                 "has_active_offers": True,
                 "available_soon": False,
@@ -96,7 +98,7 @@ def test_farms_page_filters_by_crop(client, monkeypatch):
         ],
     )
 
-    response = client.get("/farms?crop=Maize")
+    response = client.get("/farms?crop=Arabica Coffee")
 
     assert response.status_code == 200
     assert b"Riverbend Farm" in response.data
@@ -118,7 +120,7 @@ def test_farms_page_filters_by_availability(client, monkeypatch):
                 "pledge_count": 2,
                 "crop_count": 2,
                 "total_supply_kg": 1200,
-                "crop_types": ["Beans", "Tomatoes"],
+                "crop_types": ["Arabica Coffee", "Robusta Coffee"],
                 "next_available_date": "2026-06-01",
                 "has_active_offers": True,
                 "available_soon": True,
@@ -132,7 +134,7 @@ def test_farms_page_filters_by_availability(client, monkeypatch):
                 "pledge_count": 1,
                 "crop_count": 1,
                 "total_supply_kg": 800,
-                "crop_types": ["Maize"],
+                "crop_types": ["Arabica Coffee"],
                 "next_available_date": "2026-07-01",
                 "has_active_offers": True,
                 "available_soon": False,
@@ -171,16 +173,72 @@ def test_farm_profile_page_returns_success(client):
 
 
 def test_farm_pledge_detail_page_returns_success(client):
-    """A valid farm crop-offer detail page should render pledge-specific input history."""
+    """A valid farm crop-offer detail page should render pledge-specific crop records."""
     response = client.get("/farms/1/pledges/1")
 
     assert response.status_code == 200
     assert b"Offer Details" in response.data
-    assert b"Input Log History" in response.data
+    assert b"Add Crop Input Record" in response.data
+    assert b"Crop Input Record History" in response.data
     assert b"Category" in response.data
     assert b"Product" in response.data
     assert b"Brand" in response.data
     assert b"Method" in response.data
+
+
+def test_farm_pledge_detail_page_can_add_input_log_from_catalog(client, test_database_path):
+    """The crop-offer page should allow adding a crop record from the active catalog."""
+    with sqlite3.connect(test_database_path) as connection:
+        farm_id, pledge_id, catalog_id = connection.execute(
+            """
+            SELECT fa.farmer_account_id, fp.farmer_pledge_id, ic.input_catalog_id
+            FROM farmer_accounts AS fa
+            INNER JOIN farmer_pledges AS fp
+                ON fa.farmer_account_id = fp.farmer_account_id
+            CROSS JOIN input_catalog AS ic
+            WHERE ic.is_active = 1
+            LIMIT 1
+            """
+        ).fetchone()
+        before_count = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE farmer_account_id = ? AND farmer_pledge_id = ?",
+            (farm_id, pledge_id),
+        ).fetchone()[0]
+
+    response = client.post(
+        f"/farms/{farm_id}/pledges/{pledge_id}",
+        data={
+            "action": "add_input_log",
+            "input_catalog_id": str(catalog_id),
+            "quantity": "12",
+            "log_date": "2026-04-20",
+            "notes": "Field inspection entry",
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"Added" in response.data
+    with sqlite3.connect(test_database_path) as connection:
+        after_count = connection.execute(
+            "SELECT COUNT(*) FROM farm_input_logs WHERE farmer_account_id = ? AND farmer_pledge_id = ?",
+            (farm_id, pledge_id),
+        ).fetchone()[0]
+        log_row = connection.execute(
+            """
+            SELECT input_catalog_id, quantity, log_date, notes
+            FROM farm_input_logs
+            WHERE farmer_account_id = ? AND farmer_pledge_id = ?
+            ORDER BY input_log_id DESC
+            LIMIT 1
+            """,
+            (farm_id, pledge_id),
+        ).fetchone()
+
+    assert after_count == before_count + 1
+    assert log_row[0] == catalog_id
+    assert float(log_row[1]) == 12.0
+    assert log_row[2] == "2026-04-20"
+    assert log_row[3] == "Field inspection entry"
 
 
 def test_farm_pledge_detail_page_returns_404_for_unknown_pledge(client):

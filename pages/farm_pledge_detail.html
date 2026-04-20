@@ -1,13 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Crop Offer Details | Agri Platform{% endblock %}
+{% block title %}Crop Offer Details | TRN Farmer Trace{% endblock %}
 
 {% block content %}
 <section class="page-header">
     <p class="eyebrow"><a href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">{{ farm.farm_name }}</a></p>
     <h1>{{ pledge.crop_type }} Offer Details</h1>
-    <p class="lede">Review the crop offer and all recorded input activity associated with this specific pledge.</p>
+    <p class="lede">GPS coordinates are captured at registration and used for EUDR deforestation compliance verification by exporters. Plot size is recorded in hectares.</p>
 </section>
+
+{% if message %}
+<div class="banner-message {% if success %}banner-message--success{% endif %}">
+    {{ message }}
+</div>
+{% endif %}
 
 <section class="detail-grid">
     <article class="info-card">
@@ -41,8 +47,40 @@
     </article>
 
     <article class="info-card info-card--wide">
-        <h2>Input Log History</h2>
-        <p class="table-subtle">Each log keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>
+        <h2>Add Crop Input Record</h2>
+        <p class="table-subtle">Choose an active product from Settings, then record the quantity used on this crop offer.</p>
+        <form method="post" class="settings-form settings-form--compact">
+            <input type="hidden" name="action" value="add_input_log">
+            <label class="settings-form__full">
+                <span>Catalog product</span>
+                <select name="input_catalog_id" required>
+                    <option value="">Select an active product</option>
+                    {% for entry in input_catalog_entries %}
+                    <option value="{{ entry.input_catalog_id }}">
+                        {{ entry.display_name }} · {{ entry.application_method }} · {{ entry.default_unit }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>Quantity</span>
+                <input type="number" name="quantity" step="0.01" min="0.01" placeholder="e.g. 12" required>
+            </label>
+            <label>
+                <span>Record date</span>
+                <input type="date" name="log_date" value="{{ today_iso }}">
+            </label>
+            <label class="settings-form__full">
+                <span>Notes</span>
+                <textarea name="notes" rows="3" placeholder="Optional note about the application or inspection"></textarea>
+            </label>
+            <div class="settings-form__full">
+                <button type="submit" class="primary-button">Add record</button>
+            </div>
+        </form>
+
+        <h2>Crop Input Record History</h2>
+        <p class="table-subtle">Each record keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>
         <div class="detail-table-wrap">
         <table>
             <thead>
@@ -57,8 +95,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% if input_logs %}
-                {% for log in input_logs %}
+                {% if crop_records %}
+                {% for log in crop_records %}
                 <tr>
                     <td>{{ log.log_date }}</td>
                     <td>{{ log.input_type }}</td>
@@ -71,7 +109,7 @@
                 {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="7">No input logs have been recorded for this crop offer yet.</td>
+                    <td colspan="7">No crop input records have been recorded for this crop offer yet.</td>
                 </tr>
                 {% endif %}
             </tbody>

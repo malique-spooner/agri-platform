@@ -1,8 +1,8 @@
 Brand Guidelines
-Malique's Farm
+TRN Farmer Trace
 
 1. Brand Overview
-Malique's Farm is the operating brand used by the aggregator inside the agricultural coordination platform. The brand should feel calm, premium, precise, and trusted. It sits between fragmented farm supply and organised buyer demand, so the interface should communicate control, visibility, and quiet confidence rather than energy or noise.
+TRN Farmer Trace is the operating brand used by the aggregator inside the agricultural coordination platform. The brand should feel calm, premium, precise, and trusted. It sits between fragmented farm supply and organised buyer demand, so the interface should communicate control, visibility, and quiet confidence rather than energy or noise.
 
 Brand role:
 - Coordinates supply across many farms
@@ -18,10 +18,10 @@ Brand personality:
 - Human, but restrained
 
 2. Brand Positioning
-Malique's Farm is not a farming marketplace brand and not a generic admin dashboard. It should feel like an operating system for agricultural coordination teams.
+TRN Farmer Trace is not a farming marketplace brand and not a generic admin dashboard. It should feel like an operating system for agricultural coordination teams.
 
 Positioning statement:
-Malique's Farm gives aggregators a clear control layer for coordinating agricultural supply, reviewing compliance signals, and assembling reliable buyer fulfilment batches.
+TRN Farmer Trace gives aggregators a clear control layer for coordinating agricultural supply, reviewing compliance signals, and assembling reliable buyer fulfilment batches.
 
 Core promise:
 Bring fragmented supply into one readable operating view.
@@ -39,10 +39,10 @@ Visual principles:
 
 4. Logo System
 Primary name:
-Malique's Farm
+TRN Farmer Trace
 
 Internal descriptor:
-Coordination Console
+Collective Trade System
 
 Logo concept:
 The mark combines a horizon line and a parcel grid, suggesting mapped supply, field structure, and routing. The wordmark should be minimal and editorial rather than playful.
@@ -194,4 +194,4 @@ The JSON should include:
 - short copy fragments for shell text
 
 13. Implementation Note
-The current site should use Malique's Farm as the aggregator-facing brand. This does not change the project name of the repository; it changes the product identity experienced by the user inside the interface.
+The current site should use TRN Farmer Trace as the aggregator-facing brand. This does not change the project name of the repository; it changes the product identity experienced by the user inside the interface.

@@ -1,0 +1,53 @@
+<form method="post" class="settings-form" action="{{ url_for('register_farmer') }}">
+    <label>
+        <span>Farm name</span>
+        <input type="text" name="farm_name" placeholder="e.g. Sipi Plot 4" required>
+    </label>
+    <label>
+        <span>Farmer full name</span>
+        <input type="text" name="farmer_name" placeholder="e.g. Grace Namukolo" required>
+    </label>
+    <label>
+        <span>National ID number</span>
+        <input type="text" name="national_id" placeholder="e.g. CM91002345AKEN" required>
+    </label>
+    <label>
+        <span>Phone number</span>
+        <input type="text" name="phone" placeholder="e.g. +256 700 123456" required>
+    </label>
+    <label>
+        <span>Region / Country</span>
+        <select name="region" required>
+            <option value="">Select region</option>
+            <option value="Uganda">Uganda</option>
+            <option value="Kenya">Kenya</option>
+        </select>
+    </label>
+    <label>
+        <span>County / District</span>
+        <input type="text" name="county" placeholder="e.g. Mbale, Wakiso, Nyeri" required>
+    </label>
+    <label>
+        <span>Primary crop</span>
+        <select name="crop_type" required>
+            <option value="">Select crop</option>
+            <option value="Arabica Coffee">Arabica Coffee</option>
+            <option value="Robusta Coffee">Robusta Coffee</option>
+        </select>
+    </label>
+    <label>
+        <span>Plot size (hectares)</span>
+        <input type="number" name="plot_size_ha" placeholder="e.g. 0.4" step="0.01" min="0.01" max="2.0">
+    </label>
+    <label>
+        <span>Plot latitude (GPS)</span>
+        <input type="number" name="latitude" placeholder="e.g. 1.43210" step="0.00001">
+    </label>
+    <label>
+        <span>Plot longitude (GPS)</span>
+        <input type="number" name="longitude" placeholder="e.g. 34.12345" step="0.00001">
+    </label>
+    <div class="settings-form__full">
+        <button type="submit" class="primary-button">Register farmer</button>
+    </div>
+</form>
