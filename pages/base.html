@@ -12,6 +12,12 @@
     <div class="app-shell">
         <div class="app-atmosphere" aria-hidden="true"></div>
         {% include "reusable/navbar.html" %}
+        {% if demo_mode %}
+        <div class="demo-notice" role="status">
+            <strong>Public portfolio demo</strong>
+            <span>All records are synthetic. This demo is read-only; do not enter farmer, buyer or personal information.</span>
+        </div>
+        {% endif %}
         <main class="app-main">
         {% block content %}{% endblock %}
         </main>

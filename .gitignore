@@ -8,3 +8,8 @@ database/app_data.db
 .vscode/
 logs/
 docs/*.pdf
+.wrangler/
+.venv/
+.venv-workers/
+worker_assets/
+python_modules/

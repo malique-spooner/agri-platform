@@ -116,6 +116,7 @@
                 {% for row in draft_allocation.selected_rows %}
                 <li>
                     <span>{{ row.farm_name }} · {{ row.draft_quantity_kg }} kg</span>
+                    {% if not demo_mode %}
                     <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="selected_offer_id" value="{{ row.farmer_pledge_id }}">
@@ -126,6 +127,7 @@
                         <input type="hidden" name="sort" value="{{ sort_by }}">
                         <button type="submit" class="secondary-button">Remove</button>
                     </form>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
@@ -143,6 +145,7 @@
         {% endif %}
 
         <div class="allocation-sidebar__actions">
+            {% if not demo_mode %}
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="auto_fill">
                 {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
@@ -179,6 +182,9 @@
                 <input type="hidden" name="sort" value="{{ sort_by }}">
                 <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export farm summary</button>
             </form>
+            {% else %}
+            <p class="table-subtle">Allocation changes and report exports are disabled in this synthetic demo.</p>
+            {% endif %}
         </div>
     </aside>
 
@@ -307,6 +313,7 @@
                     </div>
                     <div class="offer-card__links">
                         <a class="text-link text-link--subtle" href="{{ url_for('farm_pledge_detail', farm_id=pledge.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">Crop history</a>
+                        {% if not demo_mode %}
                         <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                             <input type="hidden" name="action" value="add">
                             <input type="hidden" name="selected_offer_id" value="{{ pledge.farmer_pledge_id }}">
@@ -321,6 +328,9 @@
                                 {% if not pledge.is_selectable or pledge.is_added or pledge.suggested_quantity_kg <= 0 %}disabled{% endif %}
                             >Stage</button>
                         </form>
+                        {% else %}
+                        <span class="table-subtle">View only</span>
+                        {% endif %}
                     </div>
                 </div>
             </article>

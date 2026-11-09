@@ -1372,3 +1372,22 @@ tbody tr:last-child td {
         transform: translateY(0);
     }
 }
+
+.demo-notice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: baseline;
+    margin: 16px auto 0;
+    width: min(1320px, calc(100% - 40px));
+    padding: 12px 16px;
+    border: 1px solid #b9d7f2;
+    border-radius: 10px;
+    background: #f3f8fc;
+    color: #263449;
+    font-size: 0.88rem;
+}
+
+.demo-notice strong {
+    color: #234e41;
+}

@@ -49,6 +49,7 @@
     <article class="info-card info-card--wide">
         <h2>Add Crop Input Record</h2>
         <p class="table-subtle">Choose an active product from Settings, then record the quantity used on this crop offer.</p>
+        {% if not demo_mode %}
         <form method="post" class="settings-form settings-form--compact">
             <input type="hidden" name="action" value="add_input_log">
             <label class="settings-form__full">
@@ -78,6 +79,9 @@
                 <button type="submit" class="primary-button">Add record</button>
             </div>
         </form>
+        {% else %}
+        <p class="table-subtle">Crop history is sample data; adding or changing records is disabled.</p>
+        {% endif %}
 
         <h2>Crop Input Record History</h2>
         <p class="table-subtle">Each record keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>

@@ -31,11 +31,18 @@
         <p class="stat-label">Remaining demand</p>
         <p class="stat-value">{{ dashboard_summary.remaining_quantity_kg|int }} kg</p>
     </article>
+    {% if demo_mode %}
+    <article class="stat-card stat-card--action">
+        <p class="stat-label">Public demo</p>
+        <p class="stat-copy">Explore buyer demand, compare farm offers and inspect the allocation workflow using synthetic data.</p>
+    </article>
+    {% else %}
     <article class="stat-card stat-card--action">
         <p class="stat-label">Create lot</p>
         <p class="stat-copy">Add a new export lot with required and blocked inputs from Settings.</p>
         <a class="primary-link-button" href="{{ url_for('create_export_lot') }}">Add export lot</a>
     </article>
+    {% endif %}
 </section>
 
 <section class="filter-panel">
@@ -202,11 +209,13 @@
             </div>
         </dl>
         <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
+        {% if not demo_mode %}
         <form method="post" action="{{ url_for('buyer_pledges') }}" style="margin-top: 12px;">
             <input type="hidden" name="action" value="auto_fill_and_submit">
             <input type="hidden" name="selected_pledge_id" value="{{ selected_pledge.buyer_pledge_id }}">
             <button type="submit" class="secondary-button" {% if not auto_allocate_ready %}disabled{% endif %}>Auto-allocate &amp; submit</button>
         </form>
+        {% endif %}
         <p class="rule-copy rule-copy--muted" style="margin-top: 8px;">{{ auto_allocate_reason }}</p>
         {% else %}
         <p class="empty-state">Select a buyer pledge from the table to review its details and next steps.</p>

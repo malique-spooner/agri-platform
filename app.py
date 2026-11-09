@@ -37,7 +37,19 @@ from logic.database_helpers import (
     register_farmer_account,
 )
 from logic.logging_config import configure_logging
-from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
+try:
+    from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
+except ModuleNotFoundError as error:
+    # The public Cloudflare demo is read-only and does not offer PDF exports.
+    # Keep ReportLab optional there while preserving full local functionality.
+    if error.name != "reportlab" and not str(error.name or "").startswith("reportlab."):
+        raise
+
+    def build_buyer_summary_pdf(*args: Any, **kwargs: Any) -> BytesIO:
+        raise RuntimeError("PDF exports are available in the local application, not the public demo.")
+
+    def build_farmer_summary_pdf(*args: Any, **kwargs: Any) -> BytesIO:
+        raise RuntimeError("PDF exports are available in the local application, not the public demo.")
 
 
 configure_logging()

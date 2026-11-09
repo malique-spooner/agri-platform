@@ -1,0 +1,10 @@
+.git/
+.venv/
+.venv/**
+.venv-workers/
+.venv-workers/**
+__pycache__/
+**/__pycache__/
+**/*.pyc
+tests/
+tests/**

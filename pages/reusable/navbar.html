@@ -10,6 +10,8 @@
         <span class="topbar__kicker" data-brand-field="kicker">NGO Aggregator Workspace</span>
         <a href="{{ url_for('buyer_pledges') }}">Export Lots</a>
         <a href="{{ url_for('farms') }}">Registered Farms</a>
+        {% if not demo_mode %}
         <a href="{{ url_for('settings') }}">Settings</a>
+        {% endif %}
     </div>
 </nav>

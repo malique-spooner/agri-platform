@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agri-platform-demo",
+  "main": "worker.py",
+  "compatibility_date": "2026-11-08",
+  "compatibility_flags": ["python_workers"],
+  "routes": [
+    {
+      "pattern": "maliquespooner.com/agri",
+      "zone_name": "maliquespooner.com"
+    },
+    {
+      "pattern": "maliquespooner.com/agri/*",
+      "zone_name": "maliquespooner.com"
+    }
+  ],
+  "assets": {
+    "directory": "./worker_assets/",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "python_modules": {
+    "exclude": ["**/*.pyc", "**/__pycache__"]
+  }
+}
