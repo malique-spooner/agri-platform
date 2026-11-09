@@ -4,7 +4,7 @@ A coffee supply-chain coordination prototype for farmer registration, buyer dema
 
 ## Public demo
 
-The portfolio demo is intended to live at [maliquespooner.com/agri](https://maliquespooner.com/agri/). It runs on Cloudflare Workers and uses a deterministic synthetic dataset. The public version is read-only: it does not accept farmer or buyer details, save changes, or use a persistent database. Do not enter real personal, farm or business information.
+The portfolio demo is live at [maliquespooner.com/agri](https://maliquespooner.com/agri/). It runs on Cloudflare Workers and uses a deterministic synthetic dataset. The public version is read-only: it does not accept farmer or buyer details, save changes, or use a persistent database. Do not enter real personal, farm or business information.
 
 The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles and walk through the allocation interface. Write actions and PDF exports remain available only in the local version.
 
