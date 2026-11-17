@@ -1,4 +1,4 @@
-# Agri Platform
+# Origin & Acre
 
 A coffee supply-chain coordination prototype for farmer registration, buyer demand, farm offers and lot traceability. This is a student project and a product concept, not a production system or a service used by real farmers or buyers.
 
