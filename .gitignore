@@ -13,3 +13,8 @@ docs/*.pdf
 .venv-workers/
 worker_assets/
 python_modules/
+docs/source-material/original-dossier/
+docs/*.pdf
+tmp/
+
+docs/**/*.pdf

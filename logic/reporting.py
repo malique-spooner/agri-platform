@@ -27,18 +27,18 @@ BRAND_MANIFEST_PATH = PROJECT_ROOT / "static" / "brand" / "atlas_harvest.json"
 def load_brand_manifest() -> dict[str, Any]:
     """Return the current brand manifest or sensible fallbacks."""
     fallback = {
-        "name": "TRN Farmer Trace",
-        "descriptor": "Collective Trade System",
+        "name": "Origin & Acre",
+        "descriptor": "Coffee origin · trade · traceability",
         "colors": {
-            "ink": "#0F1724",
-            "slate": "#5F6C7B",
-            "orchardGreen": "#2F6E5B",
-            "deepOrchard": "#234E41",
-            "sageSignal": "#8FB8A7",
-            "skyTint": "#B9D7F2",
-            "wheatTint": "#E8D7AA",
-            "roseAlert": "#D98A88",
-            "cloudWhite": "#F9FBFD",
+            "ink": "#1D281F",
+            "slate": "#667065",
+            "orchardGreen": "#31583A",
+            "deepOrchard": "#173A29",
+            "sageSignal": "#849B62",
+            "skyTint": "#DFE6D2",
+            "wheatTint": "#D7A34E",
+            "roseAlert": "#C97968",
+            "cloudWhite": "#FFFDF8",
         },
     }
     if not BRAND_MANIFEST_PATH.exists():

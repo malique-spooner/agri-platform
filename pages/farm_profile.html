@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Farm Profile | TRN Farmer Trace{% endblock %}
+{% block title %}Farm Profile | Origin &amp; Acre{% endblock %}
 {% block extra_head %}
 <link
     rel="stylesheet"
@@ -12,7 +12,7 @@
 
 {% block content %}
 <section class="page-header">
-    <p class="eyebrow"><a href="{{ url_for('farms') }}">Registered Farms</a></p>
+    <p class="eyebrow"><a href="{{ url_for('farms') }}">← Farms</a></p>
     <h1>{{ farm.farm_name }}</h1>
     <p class="lede">
         Managed by {{ farm.farmer_name }}
@@ -23,27 +23,26 @@
 </section>
 
 <section class="spotlight-ribbon">
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--ochre">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg>
         <p class="spotlight-label">Farm size</p>
         <p class="spotlight-value">{{ farm.total_hectares }} ha</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--forest">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
         <p class="spotlight-label">Active pledges</p>
         <p class="spotlight-value">{{ farm.pledge_count }}</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--leaf">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20v-8M12 14c-5 0-7-3-7-7 4 0 7 2 7 7ZM12 11c0-4 2-7 7-7 0 4-2 7-7 7Z"/></svg>
         <p class="spotlight-label">Crop types</p>
         <p class="spotlight-value">{{ farm.crop_count }}</p>
-    </article>
-    <article class="spotlight-card spotlight-card--wide">
-        <p class="spotlight-label">Profile view</p>
-        <p class="spotlight-copy">GPS coordinates are captured at registration and used for EUDR deforestation compliance verification by exporters. Plot size is recorded in hectares.</p>
     </article>
 </section>
 
 <section class="detail-grid">
     <article class="info-card">
-        <h2>Contact &amp; Location</h2>
+        <h2>Farm details</h2>
         <dl class="meta-list">
             <div>
                 <dt>Farmer</dt>
@@ -58,7 +57,7 @@
                 <dd>{{ farm.phone or "Not provided" }}</dd>
             </div>
             <div>
-                <dt>Next Availability</dt>
+                <dt>Next available</dt>
                 <dd>{{ farm.next_available_date or "No dated supply listed" }}</dd>
             </div>
             <div>
@@ -97,16 +96,16 @@
     </article>
 
     <article class="info-card info-card--wide">
-        <h2>Production Pledges</h2>
+        <h2>Crop offers</h2>
         {% if pledges %}
         <div class="detail-table-wrap">
         <table>
             <thead>
                 <tr>
                     <th>Crop</th>
-                    <th>Quantity (kg)</th>
-                    <th>Asking Price</th>
-                    <th>Available From</th>
+                    <th>Quantity</th>
+                    <th>Price / kg</th>
+                    <th>Available</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -119,14 +118,14 @@
                     <td>{{ pledge.asking_price_per_kg if pledge.asking_price_per_kg is not none else "TBC" }}</td>
                     <td>{{ pledge.available_from_date or "TBC" }}</td>
                     <td>{{ pledge.pledge_status }}</td>
-                    <td><a class="text-link" href="{{ url_for('farm_pledge_detail', farm_id=farm.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">View crop details</a></td>
+                    <td><a class="text-link" href="{{ url_for('farm_pledge_detail', farm_id=farm.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">View offer →</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
         {% else %}
-        <p>No production pledges are currently listed for this farm.</p>
+            <p>No crop offers listed.</p>
         {% endif %}
     </article>
 </section>

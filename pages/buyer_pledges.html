@@ -1,87 +1,96 @@
 {% extends "base.html" %}
 
-{% block title %}Export Lots | TRN Farmer Trace{% endblock %}
+{% block title %}Export Lots | Origin &amp; Acre{% endblock %}
 
 {% block content %}
-<section class="page-header">
-    <h1>Export Lots</h1>
-    <p class="lede">
-        Review buyer demand from EU-facing exporters, match registered farm supply, and assemble verified coffee lots ready for traceability export.
-    </p>
+<section class="page-header page-header--compact queue-page-header">
+    <div>
+        <p class="eyebrow">Buyer demand</p>
+        <h1>Export lots.</h1>
+        <p class="lede">Buyer orders and fulfillment progress.</p>
+    </div>
+    {% if not demo_mode %}<a class="queue-create-link" href="{{ url_for('create_export_lot') }}">
+        <span aria-hidden="true">＋</span> New lot
+    </a>{% endif %}
 </section>
 
 {% if page_message %}
-<div class="banner-message">{{ page_message }}</div>
+<div class="banner-message {% if page_message_type == 'success' %}banner-message--success{% endif %}">
+    {{ page_message }}
+</div>
 {% endif %}
 
 <section class="stats-grid">
-    <article class="stat-card">
+    <article class="stat-card kpi-card kpi-card--forest">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
         <p class="stat-label">Total lots</p>
         <p class="stat-value">{{ dashboard_summary.total_lots }}</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Ready to export</p>
+    <article class="stat-card kpi-card kpi-card--leaf">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+        <p class="stat-label">Ready</p>
         <p class="stat-value">{{ dashboard_summary.ready_lots }}</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Active demand</p>
+    <article class="stat-card kpi-card kpi-card--ochre">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <p class="stat-label">In progress</p>
         <p class="stat-value">{{ dashboard_summary.active_lots }}</p>
     </article>
-    <article class="stat-card">
-        <p class="stat-label">Remaining demand</p>
+    <article class="stat-card kpi-card kpi-card--earth">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="11" cy="17" r="2"/></svg>
+        <p class="stat-label">Unfilled demand</p>
         <p class="stat-value">{{ dashboard_summary.remaining_quantity_kg|int }} kg</p>
     </article>
-    {% if demo_mode %}
-    <article class="stat-card stat-card--action">
-        <p class="stat-label">Public demo</p>
-        <p class="stat-copy">Explore buyer demand, compare farm offers and inspect the allocation workflow using synthetic data.</p>
-    </article>
-    {% else %}
-    <article class="stat-card stat-card--action">
-        <p class="stat-label">Create lot</p>
-        <p class="stat-copy">Add a new export lot with required and blocked inputs from Settings.</p>
-        <a class="primary-link-button" href="{{ url_for('create_export_lot') }}">Add export lot</a>
-    </article>
-    {% endif %}
 </section>
 
 <section class="filter-panel">
     <form class="filter-form" method="get" action="{{ url_for('buyer_pledges') }}">
-        <input type="text" name="q" value="{{ search_term }}" placeholder="Search buyer or crop...">
+        <input type="text" name="q" value="{{ search_term }}" aria-label="Search lots" placeholder="Search buyers or crops">
         <select name="crop">
-            <option value="">Crop (All)</option>
+            <option value="">All crops</option>
             {% for crop in crop_options %}
             <option value="{{ crop }}" {% if crop_filter == crop %}selected{% endif %}>{{ crop }}</option>
             {% endfor %}
         </select>
         <select name="status">
-            <option value="">Status (All)</option>
+            <option value="">All statuses</option>
             <option value="not_started" {% if status_filter == "not_started" %}selected{% endif %}>Not started</option>
             <option value="in_progress" {% if status_filter == "in_progress" %}selected{% endif %}>In progress</option>
             <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
         </select>
         <select name="sort">
-            <option value="priority" {% if sort_by == "priority" %}selected{% endif %}>Sort: Priority</option>
-            <option value="deadline" {% if sort_by == "deadline" %}selected{% endif %}>Sort: Deadline</option>
-            <option value="remaining" {% if sort_by == "remaining" %}selected{% endif %}>Sort: Remaining qty</option>
-            <option value="buyer" {% if sort_by == "buyer" %}selected{% endif %}>Sort: Buyer</option>
+            <option value="priority" {% if sort_by == "priority" %}selected{% endif %}>Priority first</option>
+            <option value="deadline" {% if sort_by == "deadline" %}selected{% endif %}>Soonest deadline</option>
+            <option value="remaining" {% if sort_by == "remaining" %}selected{% endif %}>Most still needed</option>
+            <option value="buyer" {% if sort_by == "buyer" %}selected{% endif %}>Buyer name</option>
         </select>
-        <button type="submit">Apply</button>
+        <button type="submit">Search</button>
     </form>
+    {% if search_term or crop_filter or status_filter or sort_by != 'priority' %}
+    <div class="filter-summary">
+        <span>Filters applied</span>
+        {% if search_term %}<span class="filter-chip">“{{ search_term }}”</span>{% endif %}
+        {% if crop_filter %}<span class="filter-chip">{{ crop_filter }}</span>{% endif %}
+        {% if status_filter %}<span class="filter-chip">{{ {'not_started':'Not started','in_progress':'In progress','completed':'Completed'}.get(status_filter, status_filter) }}</span>{% endif %}
+        {% if sort_by != 'priority' %}<span class="filter-chip">{{ {'deadline':'Soonest deadline','remaining':'Most still needed','buyer':'Buyer name'}.get(sort_by, sort_by) }}</span>{% endif %}
+        <a class="text-link" href="{{ url_for('buyer_pledges') }}">Clear all</a>
+    </div>
+    {% endif %}
 </section>
 
 <section class="queue-layout">
     <div class="table-wrap queue-table-wrap">
         {% if pledges %}
-        <table class="directory-table queue-table">
+        <p class="result-count">Showing {{ (page - 1) * 8 + 1 }}–{{ (page - 1) * 8 + pledges|length }} of {{ total_results }} lots</p>
+        <table class="directory-table queue-table queue-table-desktop">
             <thead>
                 <tr>
                     <th>Buyer</th>
                     <th>Crop</th>
-                    <th>Demand</th>
+                    <th>Order size</th>
                     <th>Deadline</th>
                     <th>Status</th>
-                    <th>Progress</th>
+                    <th>Done</th>
                 </tr>
             </thead>
             <tbody>
@@ -101,30 +110,52 @@
                             </span>
                         </div>
                     </td>
-                    <td><span class="crop-chip">{{ pledge.crop_type }}</span></td>
+                    <td><span class="crop-chip">{{ pledge.crop_type|replace(' Coffee', '') }}</span></td>
                     <td>
                         <strong>{{ pledge.quantity_kg }} kg</strong>
                         <div class="table-subtle">{{ pledge.remaining_quantity_kg }} kg left</div>
                     </td>
-                    <td>{{ pledge.needed_by_date or "No deadline set" }}</td>
+                    <td><span class="deadline-value">{{ pledge.needed_by_date or "No deadline" }}</span><span class="table-subtle">{{ pledge.deadline_state|replace('_',' ')|title }}</span></td>
                     <td>
                         <span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.display_status }}</span>
                     </td>
-                    <td>
-                        <span class="queue-progress__label queue-progress__label--solo">{{ pledge.fulfillment_percent }}%</span>
-                    </td>
+                    <td><div class="queue-progress-cell"><span>{{ pledge.fulfillment_percent }}%</span><div class="progress-track"><span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%"></span></div></div></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        <div class="lot-cards">
+            {% for pledge in pledges %}
+            <button type="button" class="lot-card {% if selected_pledge and pledge.buyer_pledge_id == selected_pledge.buyer_pledge_id %}is-selected{% endif %}" data-pledge-id="{{ pledge.buyer_pledge_id }}" aria-label="View details for {{ pledge.organisation_name }}, pledge {{ pledge.buyer_pledge_id }}">
+                <span class="lot-card__header"><span class="entity-badge">{{ pledge.organisation_name[:2]|upper }}</span><span class="status-pill status-pill--{{ pledge.pledge_status }}">{{ pledge.display_status }}</span></span>
+                <strong class="lot-card__buyer">{{ pledge.organisation_name }}</strong>
+                <span class="lot-card__meta">{{ pledge.crop_type }} · {{ pledge.quantity_kg|int }} kg order</span>
+                <span class="lot-card__meta">{{ pledge.needed_by_date or "No deadline" }} · {{ pledge.remaining_quantity_kg|int }} kg unfilled</span>
+                <span class="progress-block__labels"><span>{{ pledge.fulfillment_percent }}% fulfilled</span><span>{{ pledge.remaining_quantity_kg|int }} kg left</span></span>
+                <span class="progress-track"><span class="progress-bar" style="width: {{ pledge.fulfillment_percent }}%"></span></span>
+                <span class="lot-card__open">View lot details <span aria-hidden="true">→</span></span>
+            </button>
+            {% endfor %}
+        </div>
+        {% if page_count > 1 %}
+        <nav class="pagination" aria-label="Lot pages">
+            {% if page > 1 %}<a href="{{ url_for('buyer_pledges', q=search_term or None, crop=crop_filter or None, status=status_filter or None, sort=sort_by if sort_by != 'priority' else None, page=page-1, selected=selected_pledge.buyer_pledge_id if selected_pledge else None) }}">← Previous</a>{% else %}<span class="is-disabled">← Previous</span>{% endif %}
+            <span>Page {{ page }} of {{ page_count }}</span>
+            {% if page < page_count %}<a href="{{ url_for('buyer_pledges', q=search_term or None, crop=crop_filter or None, status=status_filter or None, sort=sort_by if sort_by != 'priority' else None, page=page+1, selected=selected_pledge.buyer_pledge_id if selected_pledge else None) }}">Next →</a>{% else %}<span class="is-disabled">Next →</span>{% endif %}
+        </nav>
+        {% endif %}
         {% else %}
         <p class="empty-state">No buyer pledges match the current filters.</p>
         {% endif %}
     </div>
 
-    <aside class="info-card queue-panel">
+    <button class="queue-panel__backdrop" type="button" aria-label="Close lot details" hidden></button>
+    <aside class="info-card queue-panel" aria-label="Selected lot details">
         <div id="pledge-data" data-pledges='{{ pledges|tojson|forceescape }}'></div>
-        <h2>Selected Pledge</h2>
+        <div class="queue-panel__title-row">
+            <h2 id="queue-panel-title">Lot details</h2>
+            <button class="queue-panel__close" type="button" aria-label="Close lot details">Close</button>
+        </div>
         {% if selected_pledge %}
         <div class="management-card__header queue-panel__header">
             <div>
@@ -146,6 +177,26 @@
                 <span id="selected-progress-bar" class="progress-bar" style="width: {{ selected_pledge.fulfillment_percent }}%;"></span>
             </div>
         </div>
+        <div class="queue-panel__actions">
+        <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
+        {% if demo_mode %}
+        <span class="queue-panel__preview-note">Read-only public preview</span>
+        {% else %}
+        <form method="post" action="{{ url_for('buyer_pledges') }}">
+            <input type="hidden" name="action" value="auto_fill_and_submit">
+            <input type="hidden" id="selected-pledge-submit-id" name="selected_pledge_id" value="{{ selected_pledge.buyer_pledge_id }}">
+            <button
+                id="auto-submit-button"
+                type="submit"
+                class="{% if auto_allocate_ready %}primary-button{% else %}secondary-button{% endif %}"
+                {% if not auto_allocate_ready %}disabled{% endif %}
+            >Auto-allocate &amp; submit</button>
+        </form>
+        {% endif %}
+        </div>
+        {% if not demo_mode %}<p id="auto-submit-reason" class="rule-copy rule-copy--muted">{{ auto_allocate_reason }}</p>{% endif %}
+        <details class="queue-panel__more">
+        <summary>Lot information &amp; rules</summary>
         <dl class="meta-list queue-panel__meta">
             <div>
                 <dt>Total Quantity</dt>
@@ -208,17 +259,18 @@
                 </dd>
             </div>
         </dl>
-        <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
-        {% if not demo_mode %}
-        <form method="post" action="{{ url_for('buyer_pledges') }}" style="margin-top: 12px;">
-            <input type="hidden" name="action" value="auto_fill_and_submit">
-            <input type="hidden" name="selected_pledge_id" value="{{ selected_pledge.buyer_pledge_id }}">
-            <button type="submit" class="secondary-button" {% if not auto_allocate_ready %}disabled{% endif %}>Auto-allocate &amp; submit</button>
-        </form>
-        {% endif %}
-        <p class="rule-copy rule-copy--muted" style="margin-top: 8px;">{{ auto_allocate_reason }}</p>
+        </details>
+        <section class="queue-workflow" aria-label="Lot assembly steps">
+            <p class="eyebrow">A simple workflow</p>
+            <h4>From buyer request to traceable lot</h4>
+            <ol>
+                <li><span>01</span><div><strong>Review eligible farms</strong><small>Check supply against buyer rules.</small></div></li>
+                <li><span>02</span><div><strong>Stage contributions</strong><small>Adjust the amount from each farm.</small></div></li>
+                <li><span>03</span><div><strong>Confirm and export</strong><small>Finish the lot and its traceability record.</small></div></li>
+            </ol>
+        </section>
         {% else %}
-        <p class="empty-state">Select a buyer pledge from the table to review its details and next steps.</p>
+        <p class="empty-state">Choose a lot to view details.</p>
         {% endif %}
     </aside>
 </section>
@@ -230,6 +282,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const pledgeData = pledgeDataElement ? JSON.parse(pledgeDataElement.dataset.pledges || "[]") : [];
     const pledgeById = new Map(pledgeData.map((pledge) => [String(pledge.buyer_pledge_id), pledge]));
     const statusClasses = ["status-pill--open", "status-pill--partial", "status-pill--fulfilled"];
+    const queuePanel = document.querySelector(".queue-panel");
+    const queueBackdrop = document.querySelector(".queue-panel__backdrop");
+    const queueClose = document.querySelector(".queue-panel__close");
+    let returnFocusTo = null;
     const formatCriterion = (item) => {
         if (!item || typeof item !== "object") {
             return "Unknown";
@@ -266,6 +322,34 @@ document.addEventListener("DOMContentLoaded", () => {
             .replaceAll("_", " ")
             .replace(/\b\w/g, (char) => char.toUpperCase());
 
+    const openMobileDetails = () => {
+        if (!window.matchMedia("(max-width: 760px)").matches || !queuePanel) {
+            return;
+        }
+        queuePanel.classList.add("is-open");
+        queuePanel.setAttribute("role", "dialog");
+        queuePanel.setAttribute("aria-modal", "true");
+        document.body.classList.add("has-open-lot-detail");
+        if (queueBackdrop) {
+            queueBackdrop.hidden = false;
+        }
+        queueClose?.focus();
+    };
+
+    const closeMobileDetails = () => {
+        if (!queuePanel) {
+            return;
+        }
+        queuePanel.classList.remove("is-open");
+        queuePanel.removeAttribute("role");
+        queuePanel.removeAttribute("aria-modal");
+        document.body.classList.remove("has-open-lot-detail");
+        if (queueBackdrop) {
+            queueBackdrop.hidden = true;
+        }
+        returnFocusTo?.focus();
+    };
+
     const updateSelectedPledge = (pledgeId) => {
         const pledge = pledgeById.get(String(pledgeId));
         if (!pledge) {
@@ -291,14 +375,34 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCriteriaList("selected-required", pledge.criteria?.required_inputs);
         renderCriteriaList("selected-blocked", pledge.criteria?.blocked_inputs);
         document.getElementById("selected-allocation-link").href = `/buyer-pledges/${pledge.buyer_pledge_id}/allocation`;
+        const selectedSubmitId = document.getElementById("selected-pledge-submit-id");
+        const autoSubmitButton = document.getElementById("auto-submit-button");
+        const autoSubmitReason = document.getElementById("auto-submit-reason");
+        if (selectedSubmitId) {
+            selectedSubmitId.value = pledge.buyer_pledge_id;
+        }
+        if (autoSubmitButton) {
+            autoSubmitButton.disabled = !pledge.auto_allocate_ready;
+            autoSubmitButton.classList.toggle("primary-button", Boolean(pledge.auto_allocate_ready));
+            autoSubmitButton.classList.toggle("secondary-button", !Boolean(pledge.auto_allocate_ready));
+        }
+        if (autoSubmitReason) {
+            autoSubmitReason.textContent = pledge.auto_allocate_reason || "";
+        }
 
         for (const row of document.querySelectorAll(".queue-row")) {
             row.classList.toggle("queue-row--selected", row.dataset.pledgeId === String(pledgeId));
         }
+        for (const card of document.querySelectorAll(".lot-card")) {
+            card.classList.toggle("is-selected", card.dataset.pledgeId === String(pledgeId));
+        }
     };
 
     for (const row of document.querySelectorAll(".queue-row[data-pledge-id]")) {
-        const select = () => updateSelectedPledge(row.dataset.pledgeId);
+        const select = () => {
+            updateSelectedPledge(row.dataset.pledgeId);
+            openMobileDetails();
+        };
         row.addEventListener("click", select);
         row.addEventListener("keydown", (event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -306,6 +410,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 select();
             }
         });
+    }
+    for (const card of document.querySelectorAll(".lot-card[data-pledge-id]")) {
+        card.addEventListener("click", () => {
+            returnFocusTo = card;
+            updateSelectedPledge(card.dataset.pledgeId);
+            openMobileDetails();
+        });
+    }
+
+    queueClose?.addEventListener("click", closeMobileDetails);
+    queueBackdrop?.addEventListener("click", closeMobileDetails);
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && queuePanel?.classList.contains("is-open")) {
+            closeMobileDetails();
+        }
+    });
+
+    const currentSelectedRow = document.querySelector(".queue-row--selected[data-pledge-id]");
+    const selectedPledgeId = currentSelectedRow ? currentSelectedRow.dataset.pledgeId : null;
+    const selectedPledge = selectedPledgeId ? pledgeById.get(String(selectedPledgeId)) : null;
+    const readyPledge = pledgeData.find((pledge) => pledge.auto_allocate_ready);
+    if (!selectedPledge || !selectedPledge.auto_allocate_ready) {
+        if (readyPledge) {
+            updateSelectedPledge(readyPledge.buyer_pledge_id);
+        }
     }
 });
 </script>

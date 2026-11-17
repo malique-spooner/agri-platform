@@ -12,9 +12,6 @@ def test_settings_page_returns_success(client):
     assert response.status_code == 200
     assert b"Input Catalog" in response.data
     assert b"Catalog entry" in response.data
-    assert b"Register farmer" in response.data
-    assert b"Field Officer Entry" in response.data
-    assert b"/farmers/register" in response.data
 
 
 def test_settings_page_can_add_catalog_entry(client, test_database_path):

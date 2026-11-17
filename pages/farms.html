@@ -1,29 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}Registered Farms | TRN Farmer Trace{% endblock %}
+{% block title %}Registered Farms | Origin &amp; Acre{% endblock %}
 
 {% block content %}
-<section class="page-header">
-    <h1>Registered Farms</h1>
-    <p class="lede">Browse smallholder farms registered with TRN across Uganda and Kenya. Open a profile to review GPS location, plot size, and crop input history.</p>
+<section class="page-header page-header--compact queue-page-header">
+    <div>
+        <p class="eyebrow">Farm directory</p>
+        <h1>Find a farm.</h1>
+        <p class="lede">Registered coffee farms across Uganda and Kenya.</p>
+    </div>
+    {% if not demo_mode %}<a class="queue-create-link" href="{{ url_for('register_farmer') }}">
+        <span aria-hidden="true">＋</span> Register farmer
+    </a>{% endif %}
 </section>
 
 <section class="spotlight-ribbon">
-    <article class="spotlight-card">
-        <p class="spotlight-label">Visible farms</p>
-        <p class="spotlight-value">{{ farms|length }}</p>
+    <article class="spotlight-card kpi-card kpi-card--forest">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M9 20v-6h6v6M5 9h14"/></svg>
+        <p class="spotlight-label">Matching farms</p>
+        <p class="spotlight-value">{{ total_results }}</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--ochre">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.2-.6-12.8 2.5-13 8.2-.1 3.3 2.2 5.3 5.2 5.1 5.4-.3 8.4-6 7.8-13.3Z"/><path d="M4 21c2.3-5.1 6.2-8.6 11.1-11.5"/></svg>
         <p class="spotlight-label">Active offers</p>
-        <p class="spotlight-value">{{ farms|sum(attribute='pledge_count') }}</p>
+        <p class="spotlight-value">{{ total_offers }}</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--leaf">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM4 11h16M9 7V4h6v3"/><path d="M8 15h3M14 15h2"/></svg>
         <p class="spotlight-label">Supply on hand</p>
-        <p class="spotlight-value">{{ farms|sum(attribute='total_supply_kg')|int }} kg</p>
-    </article>
-    <article class="spotlight-card spotlight-card--wide">
-        <p class="spotlight-label">How to use it</p>
-        <p class="spotlight-copy">Shortlist by crop and availability, then open a profile for maps, production offers, and coffee-specific history.</p>
+        <p class="spotlight-value">{{ total_supply_kg|int }} kg</p>
     </article>
 </section>
 
@@ -33,7 +38,8 @@
             type="text"
             name="q"
             value="{{ search_term }}"
-            placeholder="Search farm, farmer, county, or region"
+            aria-label="Search farms"
+            placeholder="Search farms, people or places"
         >
         <select name="crop">
             <option value="">All crops</option>
@@ -53,13 +59,24 @@
             <option value="offers" {% if sort_by == "offers" %}selected{% endif %}>Most offers</option>
             <option value="name" {% if sort_by == "name" %}selected{% endif %}>Farm name</option>
         </select>
-        <button type="submit">Apply</button>
+        <button type="submit">Search</button>
     </form>
+    {% if search_term or crop_filter or availability_filter or sort_by != 'priority' %}
+    <div class="filter-summary">
+        <span>Filters applied</span>
+        {% if search_term %}<span class="filter-chip">“{{ search_term }}”</span>{% endif %}
+        {% if crop_filter %}<span class="filter-chip">{{ crop_filter }}</span>{% endif %}
+        {% if availability_filter == 'has_offers' %}<span class="filter-chip">Has active offers</span>{% elif availability_filter == 'soon' %}<span class="filter-chip">Available soon</span>{% endif %}
+        {% if sort_by != 'priority' %}<span class="filter-chip">{{ {'supply':'Highest supply','next':'Next availability','offers':'Most offers','name':'Farm name'}.get(sort_by, sort_by) }}</span>{% endif %}
+        <a class="text-link" href="{{ url_for('farms') }}">Clear all</a>
+    </div>
+    {% endif %}
 </section>
 
 <section>
     {% if farms %}
-    <div class="table-wrap">
+    <p class="result-count">{{ (page - 1) * 8 + 1 }}–{{ (page - 1) * 8 + farms|length }} of {{ total_results }} farms</p>
+    <div class="table-wrap farm-directory-desktop">
         <table class="directory-table">
             <thead>
                 <tr>
@@ -67,8 +84,8 @@
                     <th>Location</th>
                     <th>Offers</th>
                     <th>Crops</th>
-                    <th>Listed Supply</th>
-                    <th>Next Availability</th>
+                    <th>Available</th>
+                    <th>Next date</th>
                     <th></th>
                 </tr>
             </thead>
@@ -84,7 +101,7 @@
                             </span>
                         </div>
                     </td>
-                    <td>{{ farm.county or "County not provided" }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region or "Region not provided" }}</td>
+                    <td><span class="location-primary">{{ farm.county or "—" }}</span><span class="location-secondary">{{ farm.region or "Location not provided" }}</span></td>
                     <td><span class="metric-pill">{{ farm.pledge_count }}</span></td>
                     <td>
                         {% if farm.crop_types %}
@@ -100,14 +117,39 @@
                         No active crops
                         {% endif %}
                     </td>
-                    <td>{{ farm.total_supply_kg }} kg</td>
-                    <td>{{ farm.next_available_date or "TBC" }}</td>
-                    <td><a class="text-link" href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">View profile</a></td>
+                    <td><strong class="supply-value">{{ farm.total_supply_kg|int }} kg</strong></td>
+                    <td>{{ farm.next_available_date or "—" }}</td>
+                    <td><a class="text-link" href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">View farm <span aria-hidden="true">→</span></a></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    <div class="farm-cards">
+        {% for farm in farms %}
+        <article class="farm-card">
+            <div class="farm-card__top">
+                <span class="entity-badge">{{ farm.farm_name[:2]|upper }}</span>
+                <span class="metric-pill">{{ farm.pledge_count }} offer{% if farm.pledge_count != 1 %}s{% endif %}</span>
+            </div>
+            <a class="farm-card__title" href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">{{ farm.farm_name }} <span aria-hidden="true">↗</span></a>
+            <p class="farm-card__farmer">{{ farm.farmer_name }}</p>
+            <p class="farm-card__location">{{ farm.county or "Location not provided" }}{% if farm.county and farm.region %}, {% endif %}{{ farm.region or "" }}</p>
+            <div class="chip-list farm-card__crops">
+                {% for crop in farm.crop_types[:2] %}<span class="crop-chip crop-chip--soft">{{ crop|replace(' Coffee','') }}</span>{% endfor %}
+                {% if not farm.crop_types %}<span class="mini-chip">No active crops</span>{% endif %}
+            </div>
+            <div class="farm-card__bottom"><span><small>Available supply</small><strong>{{ farm.total_supply_kg|int }} kg</strong></span><span><small>Next date</small><strong>{{ farm.next_available_date or "TBC" }}</strong></span></div>
+        </article>
+        {% endfor %}
+    </div>
+    {% if page_count > 1 %}
+    <nav class="pagination" aria-label="Farm pages">
+        {% if page > 1 %}<a href="{{ url_for('farms', q=search_term or None, crop=crop_filter or None, availability=availability_filter or None, sort=sort_by if sort_by != 'priority' else None, page=page-1) }}">← Previous</a>{% else %}<span class="is-disabled">← Previous</span>{% endif %}
+        <span>Page {{ page }} of {{ page_count }}</span>
+        {% if page < page_count %}<a href="{{ url_for('farms', q=search_term or None, crop=crop_filter or None, availability=availability_filter or None, sort=sort_by if sort_by != 'priority' else None, page=page+1) }}">Next →</a>{% else %}<span class="is-disabled">Next →</span>{% endif %}
+    </nav>
+    {% endif %}
     {% else %}
     <p class="empty-state">No farms match the current filters.</p>
     {% endif %}

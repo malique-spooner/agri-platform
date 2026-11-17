@@ -14,7 +14,9 @@ def test_farms_page_returns_success(client):
     assert response.status_code == 200
     assert b"Registered Farms" in response.data
     assert b"<table" in response.data
-    assert b"View profile" in response.data
+    assert b"View farm" in response.data
+    assert b"Register farmer" in response.data
+    assert b'href="/farmers/register"' in response.data
 
 
 def test_farms_page_filters_by_search_term(client, monkeypatch):
@@ -165,21 +167,50 @@ def test_farm_profile_page_returns_success(client):
 
     assert response.status_code == 200
     assert b"Farm Profile" in response.data
-    assert b"Production Pledges" in response.data
+    assert b"Crop offers" in response.data
     assert b"Location" in response.data
     assert b"farm-map" in response.data
     assert b"leaflet" in response.data.lower()
-    assert b"View crop details" in response.data
+    assert b"View offer" in response.data
 
 
-def test_farm_pledge_detail_page_returns_success(client):
+def test_farm_pledge_detail_page_returns_success(client, monkeypatch):
     """A valid farm crop-offer detail page should render pledge-specific crop records."""
+    monkeypatch.setattr(
+        app_module,
+        "get_farm_by_id",
+        lambda farm_id: {
+            "farmer_account_id": farm_id,
+            "farm_name": "Sipi Plot",
+            "farmer_name": "Grace Namukolo",
+            "county": "Mbale",
+            "region": "Uganda",
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledge_by_id",
+        lambda farm_id, pledge_id: {
+            "farmer_pledge_id": pledge_id,
+            "farmer_account_id": farm_id,
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 400,
+            "allocated_quantity_kg": 0,
+            "remaining_quantity_kg": 400,
+            "asking_price_per_kg": 2.0,
+            "available_from_date": "2026-06-01",
+            "pledge_status": "available",
+        },
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge", lambda *_: [])
+    monkeypatch.setattr(app_module, "get_input_catalog_entries", lambda: [])
+
     response = client.get("/farms/1/pledges/1")
 
     assert response.status_code == 200
     assert b"Offer Details" in response.data
-    assert b"Add Crop Input Record" in response.data
-    assert b"Crop Input Record History" in response.data
+    assert b"Add input record" in response.data
+    assert b"Input history" in response.data
     assert b"Category" in response.data
     assert b"Product" in response.data
     assert b"Brand" in response.data
@@ -196,7 +227,12 @@ def test_farm_pledge_detail_page_can_add_input_log_from_catalog(client, test_dat
             INNER JOIN farmer_pledges AS fp
                 ON fa.farmer_account_id = fp.farmer_account_id
             CROSS JOIN input_catalog AS ic
+            LEFT JOIN pledge_allocations AS pa
+                ON fp.farmer_pledge_id = pa.farmer_pledge_id
             WHERE ic.is_active = 1
+            GROUP BY fa.farmer_account_id, fp.farmer_pledge_id, ic.input_catalog_id, fp.quantity_kg
+            HAVING fp.pledge_status IN ('available', 'partial')
+               AND fp.quantity_kg - COALESCE(SUM(pa.allocated_quantity_kg), 0) > 0
             LIMIT 1
             """
         ).fetchone()
@@ -239,6 +275,90 @@ def test_farm_pledge_detail_page_can_add_input_log_from_catalog(client, test_dat
     assert float(log_row[1]) == 12.0
     assert log_row[2] == "2026-04-20"
     assert log_row[3] == "Field inspection entry"
+
+
+def test_farm_pledge_detail_page_hides_input_form_when_allocated(client, monkeypatch):
+    """Allocated crop offers should render without the add-input form."""
+    monkeypatch.setattr(
+        app_module,
+        "get_farm_by_id",
+        lambda farm_id: {
+            "farmer_account_id": farm_id,
+            "farm_name": "Sipi Plot",
+            "farmer_name": "Grace Namukolo",
+            "county": "Mbale",
+            "region": "Uganda",
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledge_by_id",
+        lambda farm_id, pledge_id: {
+            "farmer_pledge_id": pledge_id,
+            "farmer_account_id": farm_id,
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 400,
+            "allocated_quantity_kg": 400,
+            "remaining_quantity_kg": 0,
+            "asking_price_per_kg": 2.0,
+            "available_from_date": "2026-06-01",
+            "pledge_status": "allocated",
+        },
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge", lambda *_: [])
+    monkeypatch.setattr(app_module, "get_input_catalog_entries", lambda: [])
+
+    response = client.get("/farms/1/pledges/1")
+
+    assert response.status_code == 200
+    assert b"Add input record" not in response.data
+    assert b"Records locked" in response.data
+
+
+def test_farm_pledge_detail_page_blocks_input_log_submission_when_allocated(client, monkeypatch):
+    """Allocated crop offers should reject new crop input submissions."""
+    monkeypatch.setattr(
+        app_module,
+        "get_farm_by_id",
+        lambda farm_id: {
+            "farmer_account_id": farm_id,
+            "farm_name": "Sipi Plot",
+            "farmer_name": "Grace Namukolo",
+            "county": "Mbale",
+            "region": "Uganda",
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledge_by_id",
+        lambda farm_id, pledge_id: {
+            "farmer_pledge_id": pledge_id,
+            "farmer_account_id": farm_id,
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 400,
+            "allocated_quantity_kg": 400,
+            "remaining_quantity_kg": 0,
+            "asking_price_per_kg": 2.0,
+            "available_from_date": "2026-06-01",
+            "pledge_status": "allocated",
+        },
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge", lambda *_: [])
+    monkeypatch.setattr(app_module, "get_input_catalog_entries", lambda: [])
+
+    response = client.post(
+        "/farms/1/pledges/1",
+        data={
+            "action": "add_input_log",
+            "input_catalog_id": "1",
+            "quantity": "12",
+            "log_date": "2026-04-20",
+            "notes": "Field inspection entry",
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"crop input records are locked" in response.data.lower()
 
 
 def test_farm_pledge_detail_page_returns_404_for_unknown_pledge(client):

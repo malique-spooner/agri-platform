@@ -11,6 +11,7 @@ from typing import Any
 from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
 
 from database.generate_data import generate_dataset
+from logic.runtime_clock import today as current_date
 from logic.allocation_logic import (
     build_draft_allocation,
     enrich_eligible_pledges_with_criteria,
@@ -230,7 +231,7 @@ def filter_and_sort_allocation_offers(
     hide_ineligible: bool,
 ) -> list[dict[str, Any]]:
     """Apply server-side filters to allocation offers."""
-    today = date.today()
+    today = current_date()
     filtered = pledges
 
     if country_filter:
@@ -407,6 +408,35 @@ def build_buyer_queue_summary(pledges: list[dict[str, Any]]) -> dict[str, float 
     }
 
 
+def first_actionable_buyer_pledge(pledges: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Return the first buyer pledge that still needs allocation work."""
+    for pledge in pledges:
+        if buyer_pledge_is_actionable(pledge):
+            return pledge
+    return pledges[0] if pledges else None
+
+
+def first_auto_allocate_ready_buyer_pledge(
+    pledges: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, str, float]:
+    """Return the first buyer pledge that can be fully auto-submitted."""
+    fallback: dict[str, Any] | None = None
+    fallback_reason = "Select an export lot to check auto-submit readiness."
+    fallback_supply = 0.0
+
+    for pledge in pledges:
+        if not buyer_pledge_is_actionable(pledge):
+            continue
+        if fallback is None:
+            fallback = pledge
+            _, fallback_reason, fallback_supply = build_auto_allocate_preview(pledge)
+        ready, reason, supply = build_auto_allocate_preview(pledge)
+        if ready:
+            return pledge, reason, supply
+
+    return fallback, fallback_reason, fallback_supply
+
+
 def catalog_entry_to_criterion(entry: dict[str, Any]) -> dict[str, Any]:
     """Convert a catalog row into buyer-criteria JSON."""
     return {
@@ -451,12 +481,18 @@ def create_app() -> Flask:
         logger.info("Redirecting home page to buyer pledges")
         return redirect(url_for("buyer_pledges"))
 
+    @app.route("/healthz")
+    def healthz():
+        """Return a simple health response for deployment checks."""
+        return {"status": "ok"}, 200
+
     @app.route("/buyer-pledges", methods=["GET", "POST"])
     def buyer_pledges():
         """Render the buyer pledge listing page."""
         logger.info("Loading buyer pledges page")
         all_pledges = get_all_buyer_pledges()
         page_message = request.args.get("message", "").strip()
+        page_message_type = request.args.get("message_type", "").strip()
         selected_id = request.args.get("selected", "").strip()
         search_term = request.args.get("q", "").strip()
         crop_filter = request.args.get("crop", "").strip()
@@ -478,16 +514,40 @@ def create_app() -> Flask:
             status_filter=status_filter,
             sort_by=sort_by,
         )
+        total_pledges = len(pledges)
+        selected_page = request.args.get("page", "1").strip()
+        page = int(selected_page) if selected_page.isdigit() else 1
+        per_page = 8
+        page_count = max(1, (total_pledges + per_page - 1) // per_page)
+        if selected_id.isdigit():
+            selected_index = next(
+                (index for index, pledge in enumerate(pledges) if int(pledge.get("buyer_pledge_id", 0)) == int(selected_id)),
+                None,
+            )
+            if selected_index is not None and "page" not in request.args:
+                page = selected_index // per_page + 1
+        page = min(max(page, 1), page_count)
+        pledges = pledges[(page - 1) * per_page : page * per_page]
+        for pledge in pledges:
+            ready, reason, supply = build_auto_allocate_preview(pledge)
+            pledge["auto_allocate_ready"] = ready
+            pledge["auto_allocate_reason"] = reason
+            pledge["auto_allocate_supply"] = supply
         selected_pledge = None
         if selected_id.isdigit():
             selected_pledge = next(
                 (pledge for pledge in pledges if int(pledge.get("buyer_pledge_id", 0)) == int(selected_id)),
                 None,
             )
-        if selected_pledge is None and pledges:
-            selected_pledge = pledges[0]
-
-        auto_allocate_ready, auto_allocate_reason, auto_allocate_supply = build_auto_allocate_preview(selected_pledge)
+        if selected_pledge is None:
+            selected_pledge, auto_allocate_reason, auto_allocate_supply = first_auto_allocate_ready_buyer_pledge(
+                pledges
+            )
+            auto_allocate_ready = bool(selected_pledge and selected_pledge.get("auto_allocate_ready"))
+        else:
+            auto_allocate_ready = bool(selected_pledge.get("auto_allocate_ready"))
+            auto_allocate_reason = str(selected_pledge.get("auto_allocate_reason") or "")
+            auto_allocate_supply = float(selected_pledge.get("auto_allocate_supply") or 0)
 
         if request.method == "POST":
             action = request.form.get("action", "").strip()
@@ -511,6 +571,7 @@ def create_app() -> Flask:
                             "buyer_pledges",
                             selected=selected_id if selected_id.isdigit() else None,
                             message=post_reason,
+                            message_type="error",
                         )
                     )
 
@@ -520,6 +581,7 @@ def create_app() -> Flask:
                         "buyer_pledges",
                         selected=post_selected_pledge["buyer_pledge_id"],
                         message=message,
+                        message_type="success" if success else "error",
                     )
                 )
 
@@ -537,9 +599,13 @@ def create_app() -> Flask:
             sort_by=sort_by,
             dashboard_summary=dashboard_summary,
             page_message=page_message,
+            page_message_type=page_message_type,
             auto_allocate_ready=auto_allocate_ready,
             auto_allocate_reason=auto_allocate_reason,
             auto_allocate_supply=auto_allocate_supply,
+            page=page,
+            page_count=page_count,
+            total_results=total_pledges,
         )
 
     @app.route("/buyer-pledges/new", methods=["GET", "POST"])
@@ -689,6 +755,14 @@ def create_app() -> Flask:
             str(buyer_pledge.get("pledge_status", "")).lower() == "fulfilled"
             or float(buyer_pledge.get("remaining_quantity_kg") or 0) <= 0
         )
+        if can_export_reports:
+            session.pop(draft_session_key, None)
+            stored_quantities = {}
+            draft_allocation = build_draft_allocation(
+                buyer_pledge=buyer_pledge,
+                eligible_pledges=eligible_pledges,
+                submitted_quantities=stored_quantities,
+            )
         submission_message = None
         if request.args.get("submitted") == "1":
             submission_message = "Allocation submitted."
@@ -714,7 +788,14 @@ def create_app() -> Flask:
                 sort_by,
             )
 
-            if action == "add":
+            if can_export_reports and action not in {"export_buyer_summary", "export_farm_summary"}:
+                submission_message = "This batch is complete. Allocation is locked."
+                logger.info(
+                    "Rejected allocation action=%s for buyer pledge id=%s because the batch is complete",
+                    action,
+                    pledge_id,
+                )
+            elif action == "add":
                 selected_offer_id = request.form.get("selected_offer_id", "").strip()
                 if selected_offer_id.isdigit():
                     offer_id = int(selected_offer_id)
@@ -922,6 +1003,7 @@ def create_app() -> Flask:
             buyer_pledge=buyer_pledge,
             eligible_pledges=visible_pledges,
             draft_allocation=draft_allocation,
+            allocation_is_complete=can_export_reports,
             hide_ineligible=hide_ineligible,
             country_filter=country_filter,
             availability_filter=availability_filter,
@@ -956,11 +1038,25 @@ def create_app() -> Flask:
             availability_filter=availability_filter,
             sort_by=sort_by,
         )
+        total_farms = len(farm_list)
+        requested_page = request.args.get("page", "1").strip()
+        page = int(requested_page) if requested_page.isdigit() else 1
+        per_page = 8
+        page_count = max(1, (total_farms + per_page - 1) // per_page)
+        page = min(max(page, 1), page_count)
+        visible_farms = farm_list[(page - 1) * per_page : page * per_page]
+        filtered_offer_count = sum(int(farm.get("pledge_count") or 0) for farm in farm_list)
+        filtered_supply_kg = sum(float(farm.get("total_supply_kg") or 0) for farm in farm_list)
         crop_options = sorted({crop for farm in all_farms for crop in farm.get("crop_types", [])})
-        logger.info("Rendering farm directory page with %s farm record(s)", len(farm_list))
+        logger.info("Rendering farm directory page %s/%s with %s of %s farm record(s)", page, page_count, len(visible_farms), total_farms)
         return render_template(
             "farms.html",
-            farms=farm_list,
+            farms=visible_farms,
+            page=page,
+            page_count=page_count,
+            total_results=total_farms,
+            total_offers=filtered_offer_count,
+            total_supply_kg=filtered_supply_kg,
             crop_options=crop_options,
             search_term=search_term,
             crop_filter=crop_filter,
@@ -1097,6 +1193,8 @@ def create_app() -> Flask:
             logger.warning("Pledge id=%s not found for farm id=%s", pledge_id, farm_id)
             abort(404)
 
+        pledge_status = str(pledge.get("pledge_status", "")).lower()
+        can_add_input_record = pledge_status in {"available", "partial"}
         crop_records = get_input_logs_for_pledge(farm_id, pledge_id)
         input_catalog_entries = get_input_catalog_entries()
         message = ""
@@ -1105,69 +1203,78 @@ def create_app() -> Flask:
         if request.method == "POST":
             action = request.form.get("action", "").strip()
             if action == "add_input_log":
-                selected_catalog_id = request.form.get("input_catalog_id", "").strip()
-                quantity_raw = request.form.get("quantity", "").strip()
-                log_date = request.form.get("log_date", "").strip()
-                notes = request.form.get("notes", "").strip()
-
-                errors = []
-                if not selected_catalog_id.isdigit():
-                    errors.append("Please choose an active catalog product.")
-                if not quantity_raw:
-                    errors.append("Quantity is required.")
-
-                quantity = None
-                if quantity_raw:
-                    try:
-                        quantity = float(quantity_raw)
-                        if quantity <= 0:
-                            errors.append("Quantity must be greater than zero.")
-                    except ValueError:
-                        errors.append("Quantity must be a number.")
-
-                if not log_date:
-                    log_date = date.today().isoformat()
-                else:
-                    try:
-                        date.fromisoformat(log_date)
-                    except ValueError:
-                        errors.append("Log date must use YYYY-MM-DD format.")
-
-                if errors:
-                    message = " ".join(errors)
-                    logger.warning(
-                        "Crop record validation failed for farm id=%s pledge id=%s: %s",
+                if not can_add_input_record:
+                    message = "This crop offer is allocated, so crop input records are locked."
+                    logger.info(
+                        "Rejected crop record creation for farm id=%s pledge id=%s because the crop offer is locked",
                         farm_id,
                         pledge_id,
-                        message,
                     )
+                    action = ""
                 else:
-                    catalog_entry = get_input_catalog_entry_by_id(int(selected_catalog_id))
-                    if catalog_entry is None or not catalog_entry.get("is_active"):
-                        message = "Please choose an active catalog product."
+                    selected_catalog_id = request.form.get("input_catalog_id", "").strip()
+                    quantity_raw = request.form.get("quantity", "").strip()
+                    log_date = request.form.get("log_date", "").strip()
+                    notes = request.form.get("notes", "").strip()
+
+                    errors = []
+                    if not selected_catalog_id.isdigit():
+                        errors.append("Please choose an active catalog product.")
+                    if not quantity_raw:
+                        errors.append("Quantity is required.")
+
+                    quantity = None
+                    if quantity_raw:
+                        try:
+                            quantity = float(quantity_raw)
+                            if quantity <= 0:
+                                errors.append("Quantity must be greater than zero.")
+                        except ValueError:
+                            errors.append("Quantity must be a number.")
+
+                    if not log_date:
+                        log_date = current_date().isoformat()
+                    else:
+                        try:
+                            date.fromisoformat(log_date)
+                        except ValueError:
+                            errors.append("Log date must use YYYY-MM-DD format.")
+
+                    if errors:
+                        message = " ".join(errors)
                         logger.warning(
-                            "Rejected crop record creation for farm id=%s pledge id=%s because catalog entry was missing or inactive",
+                            "Crop record validation failed for farm id=%s pledge id=%s: %s",
                             farm_id,
                             pledge_id,
+                            message,
                         )
                     else:
-                        create_farm_input_log(
-                            farmer_account_id=farm_id,
-                            farmer_pledge_id=pledge_id,
-                            input_catalog_id=int(selected_catalog_id),
-                            quantity=float(quantity or 0),
-                            log_date=log_date,
-                            notes=notes or None,
-                        )
-                        crop_records = get_input_logs_for_pledge(farm_id, pledge_id)
-                        success = True
-                        message = f"Added {catalog_entry['product_name']} to this crop offer."
-                        logger.info(
-                            "Added crop record for farm id=%s pledge id=%s using catalog id=%s",
-                            farm_id,
-                            pledge_id,
-                            selected_catalog_id,
-                        )
+                        catalog_entry = get_input_catalog_entry_by_id(int(selected_catalog_id))
+                        if catalog_entry is None or not catalog_entry.get("is_active"):
+                            message = "Please choose an active catalog product."
+                            logger.warning(
+                                "Rejected crop record creation for farm id=%s pledge id=%s because catalog entry was missing or inactive",
+                                farm_id,
+                                pledge_id,
+                            )
+                        else:
+                            create_farm_input_log(
+                                farmer_account_id=farm_id,
+                                farmer_pledge_id=pledge_id,
+                                input_catalog_id=int(selected_catalog_id),
+                                quantity=float(quantity or 0),
+                                log_date=log_date,
+                                notes=notes or None,
+                            )
+                            crop_records = get_input_logs_for_pledge(farm_id, pledge_id)
+                            success = True
+                            message = f"Added {catalog_entry['product_name']} to this crop offer."
+                            logger.info(
+                                "Added crop record for farm id=%s pledge id=%s using catalog id=%s",
+                                farm_id,
+                                pledge_id,
+                                selected_catalog_id,
+                            )
         logger.info(
             "Rendering farm pledge detail for farm id=%s pledge id=%s with %s crop record(s)",
             farm_id,
@@ -1180,9 +1287,10 @@ def create_app() -> Flask:
             pledge=pledge,
             crop_records=crop_records,
             input_catalog_entries=input_catalog_entries,
+            can_add_input_record=can_add_input_record,
             message=message,
             success=success,
-            today_iso=date.today().isoformat(),
+            today_iso=current_date().isoformat(),
         )
 
     @app.route("/farmers/register", methods=["GET", "POST"])

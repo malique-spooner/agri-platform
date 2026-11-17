@@ -16,14 +16,9 @@ def test_build_allocation_page_returns_success(client):
     assert b"Submitted:" in response.data
     assert b"Staged:" in response.data
     assert b"Remaining after submit:" in response.data
-    assert b"Submit allocation" in response.data
     assert b"Export buyer summary" in response.data
     assert b"Export farm summary" in response.data
-    assert b"Matching Crop Offers" in response.data
-    assert b"Required" in response.data
-    assert b"Blocked" in response.data
-    assert b'Hide ineligible crop offers' in response.data
-    assert b"Auto-fill batch" in response.data
+    assert b"Matching Crop Offers" not in response.data or b"Batch complete" in response.data
 
 
 def test_build_allocation_page_auto_fill_stages_remaining_supply(client, monkeypatch):
@@ -528,6 +523,60 @@ def test_build_allocation_export_is_blocked_until_batch_is_complete(client, monk
     assert response.status_code == 200
     assert response.mimetype == "text/html"
     assert b"Complete the batch before exporting reports." in response.data
+
+
+def test_build_allocation_page_hides_matching_offers_when_batch_is_complete(client, monkeypatch):
+    """Completed buyer pledges should render in read-only mode."""
+    monkeypatch.setattr(
+        app_module,
+        "get_buyer_pledge_by_id",
+        lambda _: {
+            "buyer_pledge_id": 1,
+            "organisation_name": "Buyer One",
+            "crop_type": "Arabica Coffee",
+            "quantity_kg": 1200,
+            "allocated_quantity_kg": 1200,
+            "remaining_quantity_kg": 0,
+            "needed_by_date": "2026-08-01",
+            "pledge_status": "fulfilled",
+            "display_status": "Completed",
+            "criteria_summary": "Priority: standard",
+            "criteria": {"required_inputs": [], "blocked_inputs": []},
+        },
+    )
+    monkeypatch.setattr(
+        app_module,
+        "get_farmer_pledges_for_crop",
+        lambda _: [
+            {
+                "farmer_pledge_id": 11,
+                "farmer_account_id": 3,
+                "farm_name": "Riverbend Farm",
+                "farmer_name": "David Otieno",
+                "county": "Nakuru",
+                "region": "Kenya",
+                "available_quantity_kg": 500,
+                "available_from_date": "2026-06-01",
+                "asking_price_per_kg": 1.7,
+                "criteria_status": "eligible",
+                "criteria_message": "Matches current buyer rules",
+                "recent_inputs": [],
+                "input_logs": [],
+                "missing_required": [],
+                "blocked_matches": [],
+                "is_selectable": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(app_module, "get_input_logs_for_pledge_ids", lambda _: {11: []})
+
+    response = client.get("/buyer-pledges/1/allocation")
+
+    assert response.status_code == 200
+    assert b"<h2>Matching Crop Offers</h2>" not in response.data
+    assert b"Auto-fill batch" not in response.data
+    assert b"Submit allocation" not in response.data
+    assert b"Batch complete" in response.data
 
 
 def test_build_allocation_page_can_hide_ineligible_offers(client, monkeypatch):

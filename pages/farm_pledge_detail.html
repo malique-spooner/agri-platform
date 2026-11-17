@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Crop Offer Details | TRN Farmer Trace{% endblock %}
+{% block title %}Crop Offer Details | Origin &amp; Acre{% endblock %}
 
 {% block content %}
 <section class="page-header">
-    <p class="eyebrow"><a href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">{{ farm.farm_name }}</a></p>
-    <h1>{{ pledge.crop_type }} Offer Details</h1>
-    <p class="lede">GPS coordinates are captured at registration and used for EUDR deforestation compliance verification by exporters. Plot size is recorded in hectares.</p>
+    <p class="eyebrow"><a href="{{ url_for('farm_profile', farm_id=farm.farmer_account_id) }}">← {{ farm.farm_name }}</a></p>
+    <h1>{{ pledge.crop_type }} offer</h1>
 </section>
 
 {% if message %}
@@ -17,7 +16,7 @@
 
 <section class="detail-grid">
     <article class="info-card">
-        <h2>Crop Offer</h2>
+        <h2>Offer details</h2>
         <dl class="meta-list">
             <div>
                 <dt>Farm</dt>
@@ -32,11 +31,11 @@
                 <dd>{{ pledge.quantity_kg }} kg</dd>
             </div>
             <div>
-                <dt>Asking Price</dt>
+                <dt>Price / kg</dt>
                 <dd>{{ pledge.asking_price_per_kg if pledge.asking_price_per_kg is not none else "TBC" }}</dd>
             </div>
             <div>
-                <dt>Available From</dt>
+                <dt>Available</dt>
                 <dd>{{ pledge.available_from_date or "TBC" }}</dd>
             </div>
             <div>
@@ -47,9 +46,8 @@
     </article>
 
     <article class="info-card info-card--wide">
-        <h2>Add Crop Input Record</h2>
-        <p class="table-subtle">Choose an active product from Settings, then record the quantity used on this crop offer.</p>
-        {% if not demo_mode %}
+        {% if can_add_input_record and not demo_mode %}
+        <h2>Add input record</h2>
         <form method="post" class="settings-form settings-form--compact">
             <input type="hidden" name="action" value="add_input_log">
             <label class="settings-form__full">
@@ -80,11 +78,16 @@
             </div>
         </form>
         {% else %}
-        <p class="table-subtle">Crop history is sample data; adding or changing records is disabled.</p>
+        {% if demo_mode %}
+        <h2>Sample history</h2>
+        <p class="table-subtle">The public preview is read-only, so records cannot be changed.</p>
+        {% else %}
+        <h2>Records locked</h2>
+        <p class="table-subtle">This offer is allocated.</p>
+        {% endif %}
         {% endif %}
 
-        <h2>Crop Input Record History</h2>
-        <p class="table-subtle">Each record keeps a broad category plus specific product and brand details so future buyer criteria can be matched against this crop offer.</p>
+        <h2>Input history</h2>
         <div class="detail-table-wrap">
         <table>
             <thead>
@@ -94,7 +97,7 @@
                     <th>Product</th>
                     <th>Brand</th>
                     <th>Method</th>
-                    <th>Quantity</th>
+                    <th>Used</th>
                     <th>Notes</th>
                 </tr>
             </thead>
@@ -113,7 +116,7 @@
                 {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="7">No crop input records have been recorded for this crop offer yet.</td>
+                    <td colspan="7">No input records yet.</td>
                 </tr>
                 {% endif %}
             </tbody>

@@ -8,6 +8,8 @@ import logging
 import os
 from pathlib import Path
 import sqlite3
+
+from logic.runtime_clock import today as current_date
 from typing import Any
 
 
@@ -532,7 +534,7 @@ def get_deadline_state(needed_by_date: str | None) -> str:
     except ValueError:
         return "unscheduled"
 
-    today = date.today()
+    today = current_date()
     if deadline < today:
         return "overdue"
     if deadline <= today.fromordinal(today.toordinal() + 14):
@@ -767,7 +769,7 @@ def get_all_farms() -> list[dict[str, Any]]:
         rows = connection.execute(query).fetchall()
 
     farms = rows_to_dicts(rows)
-    today = date.today()
+    today = current_date()
     available_soon_cutoff = today + timedelta(days=30)
 
     for farm in farms:

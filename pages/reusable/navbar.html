@@ -1,17 +1,22 @@
-<nav class="topbar">
+<nav class="topbar" aria-label="Primary navigation">
     <a class="brand-lockup" href="{{ url_for('buyer_pledges') }}">
-        <img src="{{ url_for('static', filename='images/atlas-harvest-mark.svg') }}" alt="TRN Farmer Trace logo">
+        <img src="{{ url_for('static', filename='images/origin-acre-mark.svg') }}" alt="Origin &amp; Acre logo">
         <span class="brand-lockup__text">
-            <strong data-brand-field="name">TRN Farmer Trace</strong>
-            <span data-brand-field="descriptor">Collective Trade System</span>
+            <strong data-brand-field="name">Origin &amp; Acre</strong>
+            <span data-brand-field="descriptor">Coffee origin · trade · traceability</span>
         </span>
     </a>
     <div class="topbar__nav">
-        <span class="topbar__kicker" data-brand-field="kicker">NGO Aggregator Workspace</span>
-        <a href="{{ url_for('buyer_pledges') }}">Export Lots</a>
-        <a href="{{ url_for('farms') }}">Registered Farms</a>
-        {% if not demo_mode %}
-        <a href="{{ url_for('settings') }}">Settings</a>
-        {% endif %}
+        <span class="topbar__kicker" data-brand-field="kicker">Your workspace</span>
+        <a class="{% if request.endpoint == 'buyer_pledges' %}is-active{% endif %}" href="{{ url_for('buyer_pledges') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 9h8M8 12h5M8 15h7"/></svg><span>Export lots</span>
+        </a>
+        <a class="{% if request.endpoint in ['farms', 'farm_profile', 'farm_pledge_detail', 'register_farmer'] %}is-active{% endif %}" href="{{ url_for('farms') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20v-8M12 14c-5 0-7-3-7-7 4 0 7 2 7 7ZM12 11c0-4 2-7 7-7 0 4-2 7-7 7Z"/></svg><span>Farms</span>
+        </a>
+        {% if not demo_mode %}<a class="{% if request.endpoint == 'settings' %}is-active{% endif %}" href="{{ url_for('settings') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19 13.5 1.5 1.1-1.5 2.6-1.8-.6a7 7 0 0 1-1.5.9l-.3 1.9h-3l-.4-1.9a7 7 0 0 1-1.5-.9l-1.8.6-1.5-2.6 1.5-1.1a7 7 0 0 1 0-1.8L5.2 10.6l1.5-2.6 1.8.6a7 7 0 0 1 1.5-.9l.4-1.9h3l.3 1.9a7 7 0 0 1 1.5.9l1.8-.6 1.5 2.6L19 11.7a7 7 0 0 1 0 1.8Z"/></svg><span>Settings</span>
+        </a>{% endif %}
     </div>
+    <p class="topbar__footer">Uganda · Kenya<br><span>From origin to market</span></p>
 </nav>

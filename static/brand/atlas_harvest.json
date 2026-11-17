@@ -1,12 +1,12 @@
 {
-  "name": "TRN Farmer Trace",
-  "descriptor": "Collective Trade System",
+  "name": "Origin & Acre",
+  "descriptor": "Coffee origin · trade · traceability",
   "mission": "Register micro-farms, build verified lots, and deliver traceable coffee to export buyers.",
   "product_shell": {
-    "kicker": "NGO Aggregator Workspace",
+    "kicker": "Farm-to-market network",
     "nav_primary": "Export Lots",
     "nav_secondary": "Registered Farms",
-    "footer_note": "TRN Farmer Trace coordinates smallholder coffee registration, lot assembly, and buyer-facing traceability records across Uganda and Kenya."
+    "footer_note": "Coffee origin, cooperative trade, and traceability across Uganda and Kenya."
   },
   "status_labels": {
     "open": "Not started",
@@ -14,15 +14,15 @@
     "fulfilled": "Completed"
   },
   "colors": {
-    "mist": "#EEF2F7",
-    "cloudWhite": "#F9FBFD",
-    "ink": "#0F1724",
-    "slate": "#5F6C7B",
-    "orchardGreen": "#2F6E5B",
-    "deepOrchard": "#234E41",
-    "sageSignal": "#8FB8A7",
-    "skyTint": "#B9D7F2",
-    "wheatTint": "#E8D7AA",
-    "roseAlert": "#D98A88"
+    "mist": "#F2EADB",
+    "cloudWhite": "#FFFDF8",
+    "ink": "#1D281F",
+    "slate": "#667065",
+    "orchardGreen": "#31583A",
+    "deepOrchard": "#173A29",
+    "sageSignal": "#849B62",
+    "skyTint": "#DFE6D2",
+    "wheatTint": "#D7A34E",
+    "roseAlert": "#C97968"
   }
 }

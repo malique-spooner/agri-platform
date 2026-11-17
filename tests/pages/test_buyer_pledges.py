@@ -50,13 +50,15 @@ def test_buyer_pledges_page_returns_success(client):
 
     assert response.status_code == 200
     assert b"Export Lots" in response.data
-    assert b"Add export lot" in response.data
+    assert b"New lot" in response.data
+    assert b'href="/export-lots/new"' in response.data
     assert b"Total lots" in response.data
-    assert b"Selected Pledge" in response.data
+    assert b"Lot details" in response.data
     assert b"Required" in response.data
     assert b"Blocked" in response.data
     assert b"Review eligible farms" in response.data
     assert b"Auto-allocate &amp; submit" in response.data
+    assert b"selected-pledge-submit-id" in response.data
     assert b"/allocation" in response.data
     assert b'data-pledge-id="' in response.data
 
@@ -83,6 +85,7 @@ def test_buyer_pledges_page_auto_allocate_and_submit_returns_to_same_page(client
     assert response.status_code == 302
     assert response.headers["Location"].startswith("/buyer-pledges?selected=")
     assert "message=Auto-allocate+and+submit+completed" in response.headers["Location"]
+    assert "message_type=success" in response.headers["Location"]
 
 
 def test_auto_allocate_and_submit_buyer_pledge_submits_selected_actionable_pledge(client, monkeypatch):
@@ -301,6 +304,59 @@ def test_buyer_pledges_page_uses_selected_query_param_for_detail_panel(client, m
     assert "33.3% fulfilled" in response_text
 
 
+def test_buyer_pledges_page_defaults_to_first_auto_submit_ready_pledge(client, monkeypatch):
+    """When no row is selected, the page should default to a ready-to-submit pledge."""
+    monkeypatch.setattr(
+        app_module,
+        "get_all_buyer_pledges",
+        lambda: [
+            make_pledge(
+                buyer_pledge_id=1,
+                organisation_name="Partial Buyer",
+                pledge_status="partial",
+                display_status="In progress",
+                allocated_quantity_kg=400,
+                remaining_quantity_kg=1100,
+                fulfillment_percent=27,
+            ),
+            make_pledge(
+                buyer_pledge_id=2,
+                organisation_name="Ready Buyer",
+                pledge_status="open",
+                display_status="Not started",
+                allocated_quantity_kg=0,
+                remaining_quantity_kg=1500,
+                fulfillment_percent=0,
+            ),
+            make_pledge(
+                buyer_pledge_id=3,
+                organisation_name="Completed Buyer",
+                pledge_status="fulfilled",
+                display_status="Completed",
+                allocated_quantity_kg=1500,
+                remaining_quantity_kg=0,
+                fulfillment_percent=100,
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        app_module,
+        "build_auto_allocate_preview",
+        lambda buyer_pledge: (
+            buyer_pledge["organisation_name"] == "Ready Buyer",
+            "Auto-fill can fully submit this lot with 1500 kg of eligible supply.",
+            1500,
+        ),
+    )
+
+    response_text = client.get("/buyer-pledges").get_data(as_text=True)
+
+    assert "Ready Buyer" in response_text
+    assert "Completed Buyer" in response_text
+    assert response_text.index("Ready Buyer") < response_text.index("Completed Buyer")
+    assert "Auto-fill can fully submit this lot with 1500 kg of eligible supply." in response_text
+
+
 def test_buyer_pledges_page_uses_fallbacks_for_missing_price_and_deadline(client, monkeypatch):
     """Missing target price and deadline should render fallback text."""
     monkeypatch.setattr(
@@ -370,7 +426,7 @@ def test_buyer_pledges_page_renders_empty_state_when_filters_remove_all_rows(cli
 
     assert response.status_code == 200
     assert b"No buyer pledges match the current filters." in response.data
-    assert b"Select a buyer pledge from the table to review its details and next steps." in response.data
+    assert b"Choose a lot to view details." in response.data
 
 
 def test_export_lot_creation_page_returns_success(client):

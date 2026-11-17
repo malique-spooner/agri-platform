@@ -17,6 +17,7 @@ DATABASE_PATH = PROJECT_ROOT / "database" / "app_data.db"
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from logic.logging_config import configure_logging
+from logic.runtime_clock import today as current_date
 from database.setup_database import initialise_database
 
 
@@ -329,7 +330,7 @@ def choose_input_record(rng: random.Random, catalog: list[dict[str, object]]) ->
 
 def default_now() -> datetime:
     """Anchor generated dates to the current operating day."""
-    return datetime.combine(date.today(), datetime.min.time()).replace(hour=9)
+    return datetime.combine(current_date(), datetime.min.time()).replace(hour=9)
 
 
 def seed_input_catalog(connection: sqlite3.Connection) -> list[dict[str, object]]:
@@ -878,6 +879,8 @@ def seed_auto_submit_edge_cases(connection: sqlite3.Connection) -> None:
     ).fetchone()
     if hard_lot is not None:
         hard_lot_id, hard_crop_type = hard_lot
+        # Keep this demo lot strict enough to show review states, but still
+        # matchable so the allocation builder has some ready offers.
         hard_notes = {
             "priority": "standard",
             "organic_preference": False,
@@ -885,29 +888,27 @@ def seed_auto_submit_edge_cases(connection: sqlite3.Connection) -> None:
             "crop_type": hard_crop_type,
             "required_inputs": [
                 {
-                    "input_type": "Post-harvest",
-                    "product_name": "Solar drying tunnel",
-                    "brand_name": "TraceDry",
+                    "input_type": "Irrigation",
+                    "product_name": "Drip irrigation cycle",
+                    "brand_name": None,
                 }
             ],
-            "blocked_inputs": [
-                {
-                    "input_type": "Pesticide",
-                    "product_name": "Pyrethrin spray",
-                    "brand_name": "CropShield",
-                }
-            ],
+            "blocked_inputs": [],
         }
         connection.execute(
             """
             UPDATE buyer_pledges
             SET
                 quantity_kg = MAX(quantity_kg, 2200),
-                needed_by_date = date('now', '+2 day'),
+                needed_by_date = ?,
                 notes = ?
             WHERE buyer_pledge_id = ?
             """,
-            (json.dumps(hard_notes, sort_keys=True), hard_lot_id),
+            (
+                (current_date() + timedelta(days=2)).isoformat(),
+                json.dumps(hard_notes, sort_keys=True),
+                hard_lot_id,
+            ),
         )
 
 

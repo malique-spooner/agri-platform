@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Assemble Lot | TRN Farmer Trace{% endblock %}
+{% block title %}Assemble Lot | Origin &amp; Acre{% endblock %}
 
 {% block content %}
 <section class="page-header">
@@ -10,15 +10,18 @@
 </section>
 
 <section class="spotlight-ribbon">
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--forest">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM4 11h16M9 7V4h6v3"/></svg>
         <p class="spotlight-label">Required</p>
         <p class="spotlight-value">{{ buyer_pledge.quantity_kg }} kg</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--leaf">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
         <p class="spotlight-label">Submitted</p>
         <p class="spotlight-value">{{ buyer_pledge.allocated_quantity_kg }} kg</p>
     </article>
-    <article class="spotlight-card">
+    <article class="spotlight-card kpi-card kpi-card--ochre">
+        <svg class="kpi-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
         <p class="spotlight-label">Staged</p>
         <p class="spotlight-value">{{ draft_allocation.total_allocated_kg }} kg</p>
     </article>
@@ -116,7 +119,6 @@
                 {% for row in draft_allocation.selected_rows %}
                 <li>
                     <span>{{ row.farm_name }} · {{ row.draft_quantity_kg }} kg</span>
-                    {% if not demo_mode %}
                     <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="selected_offer_id" value="{{ row.farmer_pledge_id }}">
@@ -127,7 +129,6 @@
                         <input type="hidden" name="sort" value="{{ sort_by }}">
                         <button type="submit" class="secondary-button">Remove</button>
                     </form>
-                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
@@ -145,7 +146,7 @@
         {% endif %}
 
         <div class="allocation-sidebar__actions">
-            {% if not demo_mode %}
+            {% if not demo_mode and not allocation_is_complete %}
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="auto_fill">
                 {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
@@ -164,6 +165,12 @@
                 <input type="hidden" name="sort" value="{{ sort_by }}">
                 <button type="submit" class="primary-button">Submit allocation</button>
             </form>
+            {% else %}
+            <div class="allocation-complete-note">
+                <h3>Batch complete</h3>
+                <p class="table-subtle">This export lot is already complete, so allocation controls are locked.</p>
+            </div>
+            {% endif %}
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="export_buyer_summary">
                 {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
@@ -182,12 +189,10 @@
                 <input type="hidden" name="sort" value="{{ sort_by }}">
                 <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export farm summary</button>
             </form>
-            {% else %}
-            <p class="table-subtle">Allocation changes and report exports are disabled in this synthetic demo.</p>
-            {% endif %}
         </div>
     </aside>
 
+    {% if not allocation_is_complete %}
     <div>
         <div class="allocation-header">
             <h2>Matching Crop Offers</h2>
@@ -313,7 +318,6 @@
                     </div>
                     <div class="offer-card__links">
                         <a class="text-link text-link--subtle" href="{{ url_for('farm_pledge_detail', farm_id=pledge.farmer_account_id, pledge_id=pledge.farmer_pledge_id) }}">Crop history</a>
-                        {% if not demo_mode %}
                         <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                             <input type="hidden" name="action" value="add">
                             <input type="hidden" name="selected_offer_id" value="{{ pledge.farmer_pledge_id }}">
@@ -328,9 +332,6 @@
                                 {% if not pledge.is_selectable or pledge.is_added or pledge.suggested_quantity_kg <= 0 %}disabled{% endif %}
                             >Stage</button>
                         </form>
-                        {% else %}
-                        <span class="table-subtle">View only</span>
-                        {% endif %}
                     </div>
                 </div>
             </article>
@@ -340,5 +341,11 @@
             {% endif %}
         </div>
     </div>
+    {% else %}
+    <div class="info-card allocation-complete-note allocation-complete-note--wide">
+        <h2>Batch Complete</h2>
+        <p class="table-subtle">This export lot has been completed, so the crop offer matching view is no longer shown.</p>
+    </div>
+    {% endif %}
 </section>
 {% endblock %}

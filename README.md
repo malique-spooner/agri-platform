@@ -23,7 +23,7 @@ python database/generate_data.py
 python app.py
 ```
 
-Then open [http://127.0.0.1:5000/](http://127.0.0.1:5000/). The generated people and records are synthetic. The local app writes to `database/app_data.db`; that database is ignored by Git and can be regenerated with `python database/generate_data.py`.
+Then open [http://localhost:5000/](http://localhost:5000/). The generated people and records are synthetic. The local app writes to `database/app_data.db`; that database is ignored by Git and can be regenerated with `python database/generate_data.py`.
 
 `requirements-local.txt` includes ReportLab and pytest for local PDF exports and project development. The Cloudflare Worker dependencies are declared separately in `pyproject.toml`.
 

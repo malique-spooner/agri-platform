@@ -1,15 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Register Farmer | TRN Farmer Trace{% endblock %}
+{% block title %}Register Farmer | Origin &amp; Acre{% endblock %}
 
 {% block content %}
 <section class="page-header">
-    <p class="eyebrow"><a href="{{ url_for('farms') }}">Registered Farms</a></p>
-    <h1>Register a Farmer</h1>
-    <p class="lede">
-        Record a new smallholder into the TRN registry. GPS coordinates are collected
-        once and used for lot traceability and EU deforestation compliance verification.
-    </p>
+    <p class="eyebrow"><a href="{{ url_for('farms') }}">← Farms</a></p>
+    <h1>Register a farmer</h1>
 </section>
 
 {% if message %}
@@ -20,13 +16,7 @@
 
 <section class="settings-grid">
     <article class="info-card info-card--wide">
-        <p class="eyebrow">Field Officer Entry</p>
-        <h2>Farmer details</h2>
-        <p class="table-subtle">
-            All fields except GPS coordinates are required. GPS coordinates should be
-            recorded at the plot using a field officer device. Plot size should be
-            recorded in hectares (1 acre = 0.4 ha).
-        </p>
+        <h2>Farm and farmer details</h2>
         {% include "reusable/farmer_register_form.html" %}
     </article>
 </section>
