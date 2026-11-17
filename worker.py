@@ -34,18 +34,27 @@ sqlite3.connect = _connect_to_demo_database
 
 from database.generate_data import generate_dataset
 
-generate_dataset(
-    SimpleNamespace(
-        buyers=20,
-        buyer_pledges_total=20,
-        farmers=45,
-        max_buyer_pledges=2,
-        max_farmer_pledges=3,
-        max_input_logs=5,
-        seed=20260324,
-        database_path=Path("/tmp/agri-demo.sqlite3"),
+_demo_database_ready = False
+
+
+def seed_demo_database() -> None:
+    """Seed synthetic records on the first request, when the Worker clock is available."""
+    global _demo_database_ready
+    if _demo_database_ready:
+        return
+    generate_dataset(
+        SimpleNamespace(
+            buyers=20,
+            buyer_pledges_total=20,
+            farmers=45,
+            max_buyer_pledges=2,
+            max_farmer_pledges=3,
+            max_input_logs=5,
+            seed=20260324,
+            database_path=Path("/tmp/agri-demo.sqlite3"),
+        )
     )
-)
+    _demo_database_ready = True
 
 from flask import Response, abort, redirect, request, url_for
 from flask.sessions import SessionInterface
@@ -114,6 +123,8 @@ def inject_demo_state() -> dict[str, bool]:
 
 @app.before_request
 def keep_public_demo_read_only() -> Any:
+    if request.endpoint != "static":
+        seed_demo_database()
     if request.method not in {"GET", "HEAD"}:
         abort(405)
     if request.path in {
