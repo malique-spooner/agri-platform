@@ -6,6 +6,14 @@
   "compatibility_flags": ["python_workers"],
   "routes": [
     {
+      "pattern": "maliquespooner.com/Origin-Acre",
+      "zone_name": "maliquespooner.com"
+    },
+    {
+      "pattern": "maliquespooner.com/Origin-Acre/*",
+      "zone_name": "maliquespooner.com"
+    },
+    {
       "pattern": "maliquespooner.com/agri",
       "zone_name": "maliquespooner.com"
     },

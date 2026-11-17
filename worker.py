@@ -56,7 +56,7 @@ def seed_demo_database() -> None:
     )
     _demo_database_ready = True
 
-from flask import Response, abort, redirect, request, url_for
+from flask import Response, abort, redirect, render_template, request, url_for
 from flask.sessions import SessionInterface
 from jinja2 import BaseLoader, TemplateNotFound
 from pyodide.ffi import run_sync
@@ -66,14 +66,24 @@ from app import create_app
 
 
 class AgriPrefixMiddleware:
-    """Mount the Flask app under the portfolio's /agri path."""
+    """Mount Origin & Acre and redirect its former /agri URLs."""
 
-    def __init__(self, application: Any, prefix: str = "/agri") -> None:
+    def __init__(self, application: Any, prefix: str = "/Origin-Acre") -> None:
         self.application = application
         self.prefix = prefix.rstrip("/")
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Any:
         path = environ.get("PATH_INFO", "")
+        legacy_prefix = "/agri"
+        if path == legacy_prefix or path.startswith(f"{legacy_prefix}/"):
+            target = f"{self.prefix}{path[len(legacy_prefix):]}"
+            if target == self.prefix:
+                target = f"{self.prefix}/"
+            query = environ.get("QUERY_STRING", "")
+            if query:
+                target = f"{target}?{query}"
+            start_response("301 Moved Permanently", [("Location", target), ("Content-Length", "0")])
+            return [b""]
         if path == self.prefix:
             environ["PATH_INFO"] = "/"
         elif path.startswith(f"{self.prefix}/"):
@@ -111,9 +121,16 @@ class PublicDemoSessionInterface(SessionInterface):
 
 app = create_app()
 app.config["DEMO_READ_ONLY"] = True
-app.config["APPLICATION_ROOT"] = "/agri"
+app.config["APPLICATION_ROOT"] = "/Origin-Acre"
 app.session_interface = PublicDemoSessionInterface()
 app.jinja_loader = WorkerAssetTemplateLoader()
+
+
+def origin_acre_landing() -> Any:
+    return render_template("origin-acre-landing.html")
+
+
+app.view_functions["home"] = origin_acre_landing
 
 
 @app.context_processor

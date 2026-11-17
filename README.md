@@ -4,7 +4,7 @@ A coffee supply-chain coordination prototype for farmer registration, buyer dema
 
 ## Public demo
 
-The portfolio demo is live at [maliquespooner.com/agri](https://maliquespooner.com/agri/). It runs on Cloudflare Workers and uses a deterministic synthetic dataset. The public version is read-only: it does not accept farmer or buyer details, save changes, or use a persistent database. Do not enter real personal, farm or business information.
+The project landing page is [Origin & Acre](https://maliquespooner.com/Origin-Acre/); its read-only demo uses a deterministic synthetic dataset. The public version does not accept farmer or buyer details, save changes, or use a persistent database. Do not enter real personal, farm or business information. The former `/agri` URL redirects here, and old deep links redirect to their matching new routes.
 
 The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles and walk through the allocation interface. Write actions and PDF exports remain available only in the local version.
 
@@ -29,7 +29,7 @@ Then open [http://localhost:5000/](http://localhost:5000/). The generated people
 
 ## Cloudflare Worker
 
-The Worker mounts Flask beneath `/agri`, creates a fresh in-memory SQLite database from the deterministic sample data for each isolate and rejects all non-read requests. HTML templates and static files are copied into the Worker asset bundle before local preview or deploy.
+The Worker mounts Flask beneath `/Origin-Acre`, creates a fresh in-memory SQLite database from the deterministic sample data for each isolate and rejects all non-read requests. The landing page and HTML templates and static files are copied into the Worker asset bundle before local preview or deploy. Former `/agri` links are permanently redirected to their matching `/Origin-Acre` routes.
 
 ```bash
 uv sync
