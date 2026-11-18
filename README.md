@@ -4,9 +4,9 @@ A coffee supply-chain coordination prototype for farmer registration, buyer dema
 
 ## Public demo
 
-The project landing page is [Origin & Acre](https://maliquespooner.com/Origin-Acre/); its interactive demo uses a deterministic synthetic dataset. The public version accepts changes to sample records in an in-memory database; changes may reset when a Worker restarts and are not shared across isolates. Do not enter real personal, farm or business information. The former `/agri` URL redirects here, and old deep links redirect to their matching new routes.
+The project landing page is [Origin & Acre](https://maliquespooner.com/Origin-Acre/); its interactive demo uses a deterministic synthetic dataset. The public version accepts changes to sample records in an in-memory database for the current demo session. Reopening the landing page resets the sample data; Worker restarts can also reset it. Do not enter real personal, farm or business information. The former `/agri` URL redirects here, and old deep links redirect to their matching new routes.
 
-The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles, stage and submit synthetic allocations, add crop history, register sample farms and manage the input catalog. Changes use an in-memory database and may reset when the Worker restarts. PDF exports remain available only in the local version. Do not enter real personal, farm or buyer information.
+The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles, stage and submit synthetic allocations, add crop history, register sample farms and manage the input catalog. Reopening the landing page resets those changes. PDF exports remain available only in the local version. Do not enter real personal, farm or buyer information.
 
 ## Local application
 

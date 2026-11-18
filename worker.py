@@ -37,10 +37,10 @@ from database.generate_data import generate_dataset
 _demo_database_ready = False
 
 
-def seed_demo_database() -> None:
-    """Seed synthetic records on the first request, when the Worker clock is available."""
+def seed_demo_database(force: bool = False) -> None:
+    """Seed or reset synthetic records for a fresh public demo session."""
     global _demo_database_ready
-    if _demo_database_ready:
+    if _demo_database_ready and not force:
         return
     generate_dataset(
         SimpleNamespace(
@@ -56,7 +56,7 @@ def seed_demo_database() -> None:
     )
     _demo_database_ready = True
 
-from flask import Response, render_template, request, url_for
+from flask import Response, render_template, request, session, url_for
 from jinja2 import BaseLoader, TemplateNotFound
 from pyodide.ffi import run_sync
 from workers import wsgi
@@ -136,7 +136,13 @@ def inject_demo_state() -> dict[str, bool]:
 @app.before_request
 def seed_public_demo_on_request() -> Any:
     if request.endpoint != "static":
-        seed_demo_database()
+        # Flask's session cookie is a browser-session cookie. Reset the shared,
+        # in-memory demo when a visitor starts fresh or opens the landing page
+        # again after closing the demo.
+        new_browser_session = not session.get("_origin_acre_demo_started")
+        restart_from_landing = request.endpoint == "home"
+        seed_demo_database(force=_demo_database_ready and (new_browser_session or restart_from_landing))
+        session["_origin_acre_demo_started"] = True
     return None
 
 
