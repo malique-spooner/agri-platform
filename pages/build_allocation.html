@@ -146,7 +146,7 @@
         {% endif %}
 
         <div class="allocation-sidebar__actions">
-            {% if not demo_mode and not allocation_is_complete %}
+            {% if (interactive_demo or not demo_mode) and not allocation_is_complete %}
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="auto_fill">
                 {% if hide_ineligible %}<input type="hidden" name="hide_ineligible" value="1">{% endif %}
@@ -167,8 +167,7 @@
             </form>
             {% else %}
             <div class="allocation-complete-note">
-                <h3>Batch complete</h3>
-                <p class="table-subtle">This export lot is already complete, so allocation controls are locked.</p>
+                {% if allocation_is_complete %}<h3>Batch complete</h3><p class="table-subtle">This export lot is fully allocated, so allocation controls are locked.</p>{% else %}<h3>Allocation unavailable</h3><p class="table-subtle">The allocation workflow is currently unavailable.</p>{% endif %}
             </div>
             {% endif %}
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
@@ -178,7 +177,7 @@
                 <input type="hidden" name="availability" value="{{ availability_filter }}">
                 <input type="hidden" name="rule" value="{{ rule_filter }}">
                 <input type="hidden" name="sort" value="{{ sort_by }}">
-                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export buyer summary</button>
+                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports or interactive_demo %}disabled title="PDF exports are unavailable in this interactive demo."{% endif %}>Export buyer summary</button>
             </form>
             <form method="post" action="{{ url_for('build_allocation', pledge_id=buyer_pledge.buyer_pledge_id, hide_ineligible='1' if hide_ineligible else None) }}">
                 <input type="hidden" name="action" value="export_farm_summary">
@@ -187,7 +186,7 @@
                 <input type="hidden" name="availability" value="{{ availability_filter }}">
                 <input type="hidden" name="rule" value="{{ rule_filter }}">
                 <input type="hidden" name="sort" value="{{ sort_by }}">
-                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports %}disabled{% endif %}>Export farm summary</button>
+                <button type="submit" class="secondary-button secondary-button--ghost" {% if not can_export_reports or interactive_demo %}disabled title="PDF exports are unavailable in this interactive demo."{% endif %}>Export farm summary</button>
             </form>
         </div>
     </aside>

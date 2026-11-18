@@ -46,7 +46,7 @@
     </article>
 
     <article class="info-card info-card--wide">
-        {% if can_add_input_record and not demo_mode %}
+        {% if can_add_input_record and (interactive_demo or not demo_mode) %}
         <h2>Add input record</h2>
         <form method="post" class="settings-form settings-form--compact">
             <input type="hidden" name="action" value="add_input_log">
@@ -80,7 +80,7 @@
         {% else %}
         {% if demo_mode %}
         <h2>Sample history</h2>
-        <p class="table-subtle">The public preview is read-only, so records cannot be changed.</p>
+        <p class="table-subtle">Changes use synthetic demo data and may reset when the demo restarts.</p>
         {% else %}
         <h2>Records locked</h2>
         <p class="table-subtle">This offer is allocated.</p>

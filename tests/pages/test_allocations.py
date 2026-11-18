@@ -21,6 +21,15 @@ def test_build_allocation_page_returns_success(client):
     assert b"Matching Crop Offers" not in response.data or b"Batch complete" in response.data
 
 
+def test_buyer_queue_allocation_button_keeps_mounted_origin_acre_prefix(client):
+    """The dynamically updated allocation button must keep the deployed app prefix."""
+    response = client.get("/buyer-pledges", environ_overrides={"SCRIPT_NAME": "/Origin-Acre"})
+
+    assert response.status_code == 200
+    assert b'"/Origin-Acre/buyer-pledges/0/allocation".replace("/0/", "/" + pledge.buyer_pledge_id + "/")' in response.data
+    assert b'`/buyer-pledges/${pledge.buyer_pledge_id}/allocation`' not in response.data
+
+
 def test_build_allocation_page_auto_fill_stages_remaining_supply(client, monkeypatch):
     """Auto-fill should stage multiple eligible offers until the buyer demand is met."""
     monkeypatch.setattr(

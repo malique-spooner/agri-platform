@@ -9,7 +9,7 @@
         <h1>Find a farm.</h1>
         <p class="lede">Registered coffee farms across Uganda and Kenya.</p>
     </div>
-    {% if not demo_mode %}<a class="queue-create-link" href="{{ url_for('register_farmer') }}">
+    {% if interactive_demo or not demo_mode %}<a class="queue-create-link" href="{{ url_for('register_farmer') }}">
         <span aria-hidden="true">＋</span> Register farmer
     </a>{% endif %}
 </section>

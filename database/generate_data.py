@@ -261,8 +261,9 @@ def build_buyer_criteria_payload(
         for record in catalog
         if str(record["input_category"]) != "Fungicide"
     ]
-    required_count = rng.choices([0, 1, 2], weights=[7, 3, 0], k=1)[0]
-    blocked_count = rng.choices([0, 1, 2], weights=[7, 2, 1], k=1)[0]
+    # Give the sample buyer queue enough visible variety to demonstrate matching.
+    required_count = rng.choices([0, 1, 2], weights=[2, 6, 2], k=1)[0]
+    blocked_count = rng.choices([0, 1, 2], weights=[2, 6, 2], k=1)[0]
 
     required_inputs = []
     blocked_inputs = []

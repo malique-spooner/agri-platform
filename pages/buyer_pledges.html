@@ -9,7 +9,7 @@
         <h1>Export lots.</h1>
         <p class="lede">Buyer orders and fulfillment progress.</p>
     </div>
-    {% if not demo_mode %}<a class="queue-create-link" href="{{ url_for('create_export_lot') }}">
+    {% if interactive_demo or not demo_mode %}<a class="queue-create-link" href="{{ url_for('create_export_lot') }}">
         <span aria-hidden="true">＋</span> New lot
     </a>{% endif %}
 </section>
@@ -179,9 +179,7 @@
         </div>
         <div class="queue-panel__actions">
         <a id="selected-allocation-link" class="primary-link-button" href="{{ url_for('build_allocation', pledge_id=selected_pledge.buyer_pledge_id) }}">Review eligible farms</a>
-        {% if demo_mode %}
-        <span class="queue-panel__preview-note">Read-only public preview</span>
-        {% else %}
+        {% if interactive_demo or not demo_mode %}
         <form method="post" action="{{ url_for('buyer_pledges') }}">
             <input type="hidden" name="action" value="auto_fill_and_submit">
             <input type="hidden" id="selected-pledge-submit-id" name="selected_pledge_id" value="{{ selected_pledge.buyer_pledge_id }}">
@@ -194,7 +192,7 @@
         </form>
         {% endif %}
         </div>
-        {% if not demo_mode %}<p id="auto-submit-reason" class="rule-copy rule-copy--muted">{{ auto_allocate_reason }}</p>{% endif %}
+        <p id="auto-submit-reason" class="rule-copy rule-copy--muted">{{ auto_allocate_reason }}</p>
         <details class="queue-panel__more">
         <summary>Lot information &amp; rules</summary>
         <dl class="meta-list queue-panel__meta">
@@ -374,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("selected-priority-state").textContent = toTitle(pledge.deadline_state);
         renderCriteriaList("selected-required", pledge.criteria?.required_inputs);
         renderCriteriaList("selected-blocked", pledge.criteria?.blocked_inputs);
-        document.getElementById("selected-allocation-link").href = `/buyer-pledges/${pledge.buyer_pledge_id}/allocation`;
+        document.getElementById("selected-allocation-link").href = "{{ url_for('build_allocation', pledge_id=0) }}".replace("/0/", "/" + pledge.buyer_pledge_id + "/");
         const selectedSubmitId = document.getElementById("selected-pledge-submit-id");
         const autoSubmitButton = document.getElementById("auto-submit-button");
         const autoSubmitReason = document.getElementById("auto-submit-reason");

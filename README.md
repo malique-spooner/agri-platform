@@ -4,9 +4,9 @@ A coffee supply-chain coordination prototype for farmer registration, buyer dema
 
 ## Public demo
 
-The project landing page is [Origin & Acre](https://maliquespooner.com/Origin-Acre/); its read-only demo uses a deterministic synthetic dataset. The public version does not accept farmer or buyer details, save changes, or use a persistent database. Do not enter real personal, farm or business information. The former `/agri` URL redirects here, and old deep links redirect to their matching new routes.
+The project landing page is [Origin & Acre](https://maliquespooner.com/Origin-Acre/); its interactive demo uses a deterministic synthetic dataset. The public version accepts changes to sample records in an in-memory database; changes may reset when a Worker restarts and are not shared across isolates. Do not enter real personal, farm or business information. The former `/agri` URL redirects here, and old deep links redirect to their matching new routes.
 
-The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles and walk through the allocation interface. Write actions and PDF exports remain available only in the local version.
+The demo lets reviewers explore the buyer-demand queue, filter coffee offers, inspect farm profiles, stage and submit synthetic allocations, add crop history, register sample farms and manage the input catalog. Changes use an in-memory database and may reset when the Worker restarts. PDF exports remain available only in the local version. Do not enter real personal, farm or buyer information.
 
 ## Local application
 
@@ -29,7 +29,7 @@ Then open [http://localhost:5000/](http://localhost:5000/). The generated people
 
 ## Cloudflare Worker
 
-The Worker mounts Flask beneath `/Origin-Acre`, creates a fresh in-memory SQLite database from the deterministic sample data for each isolate and rejects all non-read requests. The landing page and HTML templates and static files are copied into the Worker asset bundle before local preview or deploy. Former `/agri` links are permanently redirected to their matching `/Origin-Acre` routes.
+The Worker mounts Flask beneath `/Origin-Acre` and creates an in-memory SQLite database from the deterministic sample data for each isolate. The interactive demo accepts changes to synthetic data; those changes can reset when an isolate restarts and are not shared across isolates. The landing page and HTML templates and static files are copied into the Worker asset bundle before local preview or deploy. Former `/agri` links are permanently redirected to their matching `/Origin-Acre` routes.
 
 ```bash
 uv sync
@@ -43,6 +43,6 @@ For deployment, run `bash scripts/deploy_worker.sh` after confirming the Cloudfl
 
 - Python 3.11+
 - Flask and SQLite for the local application
-- Cloudflare Workers Python runtime for the public read-only demo
+- Cloudflare Workers Python runtime for the public interactive demo
 - ReportLab for local PDF exports
 - Pytest for the local project test suite

@@ -41,7 +41,7 @@ from logic.logging_config import configure_logging
 try:
     from logic.reporting import build_buyer_summary_pdf, build_farmer_summary_pdf
 except ModuleNotFoundError as error:
-    # The public Cloudflare demo is read-only and does not offer PDF exports.
+    # The interactive public Cloudflare demo omits optional PDF exports.
     # Keep ReportLab optional there while preserving full local functionality.
     if error.name != "reportlab" and not str(error.name or "").startswith("reportlab."):
         raise

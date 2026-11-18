@@ -1,4 +1,4 @@
-"""Cloudflare Worker entry point for the read-only Agri portfolio demo."""
+"""Cloudflare Worker entry point for the interactive synthetic Origin & Acre demo."""
 
 from __future__ import annotations
 
@@ -56,8 +56,7 @@ def seed_demo_database() -> None:
     )
     _demo_database_ready = True
 
-from flask import Response, abort, redirect, render_template, request, url_for
-from flask.sessions import SessionInterface
+from flask import Response, render_template, request, url_for
 from jinja2 import BaseLoader, TemplateNotFound
 from pyodide.ffi import run_sync
 from workers import wsgi
@@ -109,20 +108,9 @@ class WorkerAssetTemplateLoader(BaseLoader):
         return source, f"worker-assets://pages/{safe_template}", lambda: True
 
 
-class PublicDemoSessionInterface(SessionInterface):
-    """Give public GET requests an empty session without issuing cookies."""
-
-    def open_session(self, app: Any, request: Any) -> None:
-        return None
-
-    def save_session(self, app: Any, session: Any, response: Any) -> None:
-        return None
-
-
 app = create_app()
-app.config["DEMO_READ_ONLY"] = True
+app.config["DEMO_READ_ONLY"] = False
 app.config["APPLICATION_ROOT"] = "/Origin-Acre"
-app.session_interface = PublicDemoSessionInterface()
 app.jinja_loader = WorkerAssetTemplateLoader()
 
 
@@ -142,22 +130,13 @@ app.view_functions["home"] = origin_acre_landing
 
 @app.context_processor
 def inject_demo_state() -> dict[str, bool]:
-    return {"demo_mode": True}
+    return {"demo_mode": True, "interactive_demo": True}
 
 
 @app.before_request
-def keep_public_demo_read_only() -> Any:
+def seed_public_demo_on_request() -> Any:
     if request.endpoint != "static":
         seed_demo_database()
-    if request.method not in {"GET", "HEAD"}:
-        abort(405)
-    if request.path in {
-        "/farmers/register",
-        "/export-lots/new",
-        "/buyer-pledges/new",
-        "/settings",
-    }:
-        return redirect(url_for("buyer_pledges"))
     return None
 
 

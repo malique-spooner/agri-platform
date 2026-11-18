@@ -65,6 +65,16 @@ def test_input_catalog_is_seeded(test_database_path):
     assert entry_count >= 8
 
 
+def test_sample_buyer_lots_show_required_and_blocked_input_rules(test_database_path):
+    """The sample queue should visibly exercise both rule types used in matching."""
+    with sqlite3.connect(test_database_path) as connection:
+        payloads = [row[0] for row in connection.execute("SELECT notes FROM buyer_pledges")]
+
+    criteria = [json.loads(payload) for payload in payloads]
+    assert sum(bool(item.get("required_inputs")) for item in criteria) >= 4
+    assert sum(bool(item.get("blocked_inputs")) for item in criteria) >= 4
+
+
 def test_foreign_keys_are_valid(test_database_path):
     """Generated records should satisfy all foreign key constraints."""
     with sqlite3.connect(test_database_path) as connection:
