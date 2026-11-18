@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 810" role="img" aria-labelledby="title desc">
+  <title id="title">Origin &amp; Acre Export Lots</title>
+  <desc id="desc">A preview of the Origin &amp; Acre export lot workspace, with current navigation, metrics, filters, buyer lots and selected lot details.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#f5f0df"/><stop offset=".55" stop-color="#f8f5eb"/><stop offset="1" stop-color="#e7e3d1"/></linearGradient>
+    <linearGradient id="green"><stop stop-color="#98bca1"/><stop offset="1" stop-color="#315f48"/></linearGradient>
+    <filter id="shadow" x="-.1" y="-.1" width="1.2" height="1.2"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#24362c" flood-opacity=".10"/></filter>
+    <style>
+      text{font-family:Inter,Arial,sans-serif;fill:#1d2921}.muted{fill:#758078}.mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:1.6px}.label{font-size:15px;font-weight:700;letter-spacing:2px;fill:#77847a}.tiny{font-size:13px}.small{font-size:16px}.body{font-size:19px}.bold{font-weight:700}.card{fill:#fffefa;fill-opacity:.96;stroke:#e0e4dc;stroke-width:2}.pill{fill:#e3ede6}.green{fill:#315f48}.amber{fill:#af7424}
+    </style>
+  </defs>
+  <rect width="1440" height="810" fill="url(#bg)"/>
+  <g opacity=".09" fill="#597257"><path d="M0 0h300C206 125 216 235 90 348 30 401 0 459 0 540z"/><path d="M1440 0h-205c78 114 93 202 205 291z"/><path d="M0 716c185-155 285-131 448-8 112 84 208 106 350 102H0z"/></g>
+  <g filter="url(#shadow)"><rect x="42" y="30" width="1356" height="76" rx="24" class="card"/></g>
+  <rect x="62" y="49" width="40" height="40" rx="13" fill="#315f48"/>
+  <path d="M73 76c9-14 18-14 27 0M76 69c7-9 15-9 22 0M83 61c4-4 8-4 12 0" fill="none" stroke="#f7f3e6" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="116" y="69" class="body bold">Origin &amp; Acre</text><text x="116" y="89" class="tiny mono muted">COFFEE ORIGIN · TRADE · TRACEABILITY</text>
+  <text x="830" y="75" class="tiny mono muted">FARM-TO-MARKET NETWORK</text>
+  <rect x="1085" y="46" width="139" height="46" rx="23" fill="#f4e8d5"/><text x="1105" y="75" class="small bold">▤　Export lots</text>
+  <text x="1250" y="75" class="small muted">♧　Farms</text><text x="1350" y="75" class="small muted">⚙</text>
+
+  <rect x="42" y="128" width="1356" height="44" rx="13" fill="#f7fbfd" stroke="#d7e1e7" stroke-width="2"/>
+  <text x="62" y="156" class="small bold">Public portfolio demo</text><text x="262" y="156" class="small muted">Interactive demo with synthetic records. Changes reset when you reopen the demo.</text>
+  <text x="48" y="219" class="label mono" fill="#315f48">BUYER DEMAND</text><text x="45" y="274" font-size="48" font-weight="750" letter-spacing="-2">Export lots.</text><text x="48" y="305" class="small muted">Buyer orders and fulfilment progress.</text>
+  <rect x="1265" y="238" width="132" height="48" rx="24" fill="#315f48"/><text x="1286" y="269" class="small bold" fill="#fff">＋ New lot</text>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="332" width="322" height="111" rx="20" class="card"/><rect x="42" y="332" width="322" height="5" rx="3" fill="#315f48"/>
+    <rect x="382" y="332" width="322" height="111" rx="20" class="card"/><rect x="382" y="332" width="322" height="5" rx="3" fill="#809a4b"/>
+    <rect x="722" y="332" width="322" height="111" rx="20" class="card"/><rect x="722" y="332" width="322" height="5" rx="3" fill="#c1822e"/>
+    <rect x="1062" y="332" width="336" height="111" rx="20" class="card"/><rect x="1062" y="332" width="336" height="5" rx="3" fill="#b45a3e"/>
+  </g>
+  <circle cx="91" cy="387" r="24" fill="#e5eee7"/><text x="79" y="394" class="body green">▱</text><text x="130" y="375" class="label">TOTAL LOTS</text><text x="130" y="417" font-size="34" font-weight="750" fill="#315f48">20</text>
+  <circle cx="431" cy="387" r="24" fill="#edf0dc"/><text x="419" y="394" class="body" fill="#809a4b">✓</text><text x="470" y="375" class="label">READY</text><text x="470" y="417" font-size="34" font-weight="750" fill="#809a4b">1</text>
+  <circle cx="771" cy="387" r="24" fill="#f5e8d6"/><text x="759" y="394" class="body amber">◷</text><text x="810" y="375" class="label">IN PROGRESS</text><text x="810" y="417" font-size="34" font-weight="750" fill="#b87927">19</text>
+  <circle cx="1111" cy="387" r="24" fill="#f5e5df"/><text x="1099" y="394" class="body" fill="#b45a3e">≋</text><text x="1150" y="375" class="label">UNFILLED DEMAND</text><text x="1150" y="417" font-size="31" font-weight="750" fill="#b45a3e">16,247 kg</text>
+
+  <rect x="42" y="461" width="1356" height="68" rx="18" class="card"/>
+  <rect x="56" y="475" width="432" height="40" rx="11" fill="#fff" stroke="#e1e6e9"/><text x="76" y="501" class="small muted">⌕　 Search buyers or crops</text>
+  <rect x="500" y="475" width="220" height="40" rx="11" fill="#fff" stroke="#e1e6e9"/><text x="520" y="501" class="small">All crops　⌄</text>
+  <rect x="732" y="475" width="220" height="40" rx="11" fill="#fff" stroke="#e1e6e9"/><text x="752" y="501" class="small">All statuses　⌄</text>
+  <rect x="964" y="475" width="264" height="40" rx="11" fill="#fff" stroke="#e1e6e9"/><text x="984" y="501" class="small">Priority first　⌄</text>
+  <rect x="1240" y="475" width="142" height="40" rx="11" fill="#fff" stroke="#cad2cf"/><text x="1270" y="501" class="small bold">Search</text>
+
+  <rect x="42" y="549" width="850" height="225" rx="20" class="card"/><rect x="914" y="549" width="484" height="225" rx="20" class="card"/>
+  <text x="62" y="577" class="small muted">Showing 1–8 of 20 lots</text>
+  <text x="68" y="616" class="label">BUYER</text><text x="395" y="616" class="label">CROP</text><text x="520" y="616" class="label">ORDER SIZE</text><text x="681" y="616" class="label">STATUS</text><text x="811" y="616" class="label">DONE</text>
+  <path d="M42 630h850" stroke="#e7e9e5" stroke-width="2"/>
+  <rect x="44" y="632" width="846" height="66" fill="#edf3ee"/>
+  <rect x="60" y="646" width="38" height="38" rx="13" fill="#e4ede5"/><text x="68" y="671" class="tiny bold green">DE</text>
+  <text x="112" y="659" class="small bold">Demo Buyer · Green Valley Roasters</text><text x="112" y="683" class="tiny muted">Pledge #3</text><text x="395" y="668" class="small">Robusta</text><text x="520" y="660" class="small bold">2,200 kg</text><text x="520" y="683" class="tiny muted">2,200 kg left</text>
+  <rect x="681" y="646" width="103" height="30" rx="15" class="pill"/><text x="694" y="667" class="tiny bold green">Not started</text><text x="811" y="659" class="small bold">0.0%</text><rect x="811" y="672" width="62" height="8" rx="4" fill="#e8eaeb"/>
+  <path d="M42 699h850" stroke="#e7e9e5" stroke-width="2"/>
+  <rect x="60" y="712" width="38" height="38" rx="13" fill="#e4ede5"/><text x="68" y="737" class="tiny bold green">DE</text>
+  <text x="112" y="725" class="small bold">Demo Buyer · Forest Edge Trading</text><text x="112" y="749" class="tiny muted">Pledge #16</text><text x="395" y="734" class="small">Arabica</text><text x="520" y="726" class="small bold">1,053 kg</text><text x="520" y="749" class="tiny muted">805 kg left</text>
+  <rect x="681" y="712" width="103" height="30" rx="15" class="pill"/><text x="693" y="733" class="tiny bold green">In progress</text><text x="811" y="725" class="small bold">23.6%</text><rect x="811" y="738" width="62" height="8" rx="4" fill="#e8eaeb"/><rect x="811" y="738" width="15" height="8" rx="4" fill="url(#green)"/>
+  <text x="940" y="585" font-size="22" font-weight="750">Lot details</text><text x="940" y="627" class="body bold">Demo Buyer · Green Valley Roasters</text>
+  <rect x="940" y="641" width="106" height="30" rx="15" class="pill"/><text x="955" y="662" class="tiny bold green">Not started</text>
+  <rect x="940" y="682" width="101" height="28" rx="14" fill="#fff" stroke="#e1e6e9"/><text x="952" y="701" class="tiny bold muted">Pledge #3</text><rect x="1050" y="682" width="122" height="28" rx="14" fill="#fff" stroke="#e1e6e9"/><text x="1062" y="701" class="tiny bold muted">Robusta Coffee</text><text x="940" y="737" class="small muted">0% fulfilled</text><text x="1250" y="737" class="small muted">2,200 kg left</text><rect x="940" y="748" width="430" height="10" rx="5" fill="#e8eaeb"/>
+</svg>
