@@ -11,10 +11,24 @@ docs/*.pdf
 .wrangler/
 .venv/
 .venv-workers/
+venv/
+.venv*/
+.ruff_cache/
+htmlcov/
 worker_assets/
 python_modules/
 docs/source-material/original-dossier/
 docs/*.pdf
 tmp/
+*.db-journal
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Locally generated evidence and research output; retain their READMEs.
+docs/evidence/**
+!docs/evidence/README.md
+docs/research/**
+!docs/research/README.md
 
 docs/**/*.pdf

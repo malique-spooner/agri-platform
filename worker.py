@@ -74,6 +74,13 @@ class AgriPrefixMiddleware:
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Any:
         path = environ.get("PATH_INFO", "")
         legacy_prefix = "/agri"
+        if path == self.prefix:
+            target = f"{self.prefix}/"
+            query = environ.get("QUERY_STRING", "")
+            if query:
+                target = f"{target}?{query}"
+            start_response("301 Moved Permanently", [("Location", target), ("Content-Length", "0")])
+            return [b""]
         if path == legacy_prefix or path.startswith(f"{legacy_prefix}/"):
             target = f"{self.prefix}{path[len(legacy_prefix):]}"
             if target == self.prefix:
@@ -83,9 +90,7 @@ class AgriPrefixMiddleware:
                 target = f"{target}?{query}"
             start_response("301 Moved Permanently", [("Location", target), ("Content-Length", "0")])
             return [b""]
-        if path == self.prefix:
-            environ["PATH_INFO"] = "/"
-        elif path.startswith(f"{self.prefix}/"):
+        if path.startswith(f"{self.prefix}/"):
             environ["PATH_INFO"] = path[len(self.prefix) :]
         else:
             start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8")])
