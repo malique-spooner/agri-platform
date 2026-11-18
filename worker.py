@@ -126,6 +126,13 @@ app.session_interface = PublicDemoSessionInterface()
 app.jinja_loader = WorkerAssetTemplateLoader()
 
 
+@app.after_request
+def prevent_cached_html(response: Any) -> Any:
+    if response.mimetype == "text/html":
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 def origin_acre_landing() -> Any:
     return render_template("origin-acre-landing.html")
 
